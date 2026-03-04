@@ -1,0 +1,162 @@
+{
+  "Taj Mahal": {
+    "built_by": "Mughal Emperor Shah Jahan",
+    "year_built": "1632\u20131653",
+    "location": "Agra, Uttar Pradesh, India",
+    "type": "Mausoleum",
+    "architecture": "Mughal architecture blending Persian, Islamic, and Indian styles. Built with white Makrana marble. Features four minarets, a large central dome, and intricate pietra dura inlay work.",
+    "unesco": true,
+    "seven_wonders": true,
+    "key_facts": [
+      "Built in memory of Mumtaz Mahal, Shah Jahan's beloved wife",
+      "Over 20,000 artisans worked on its construction",
+      "The minarets are slightly tilted outward to protect the tomb in case of earthquake",
+      "Changes color throughout the day \u2014 pinkish at dawn, white at noon, golden at night",
+      "The calligraphy on the gates is from verses of the Quran"
+    ],
+    "cultural_importance": "Symbol of eternal love and one of the greatest achievements of Mughal architecture. Attracts over 7 million visitors annually.",
+    "best_time_to_visit": "October to March",
+    "entry_fee": "\u20b950 for Indians, \u20b91100 for foreigners",
+    "fun_fact": "The Taj Mahal was designated a UNESCO World Heritage Site in 1983."
+  },
+  "Red Fort": {
+    "built_by": "Mughal Emperor Shah Jahan",
+    "year_built": "1638\u20131648",
+    "location": "Delhi, India",
+    "type": "Historic Fort",
+    "architecture": "Mughal architecture with red sandstone walls. Features Lahori Gate, Delhi Gate, Diwan-i-Aam, Diwan-i-Khas, and Royal Baths.",
+    "unesco": true,
+    "seven_wonders": false,
+    "key_facts": [
+      "Served as the main residence of Mughal emperors for nearly 200 years",
+      "India's Prime Minister hoists the national flag here every Independence Day",
+      "The fort complex is 254 acres",
+      "Originally called Qila-i-Mubarak (The Blessed Fort)",
+      "The famous Kohinoor diamond was once kept here"
+    ],
+    "cultural_importance": "A symbol of India's sovereignty and Mughal power. Site of India's Independence Day celebrations every year.",
+    "best_time_to_visit": "October to March",
+    "entry_fee": "\u20b935 for Indians, \u20b9500 for foreigners",
+    "fun_fact": "The fort was the seat of Mughal power until 1857 when the last Mughal emperor Bahadur Shah Zafar was exiled."
+  },
+  "Qutub Minar": {
+    "built_by": "Qutb ud-Din Aibak (started), completed by Iltutmish",
+    "year_built": "1193\u20131220",
+    "location": "Delhi, India",
+    "type": "Minaret / Tower",
+    "architecture": "Indo-Islamic architecture. Built with red sandstone and marble. 72.5 meters tall with 379 stairs. Features intricate carvings and verses from the Quran.",
+    "unesco": true,
+    "seven_wonders": false,
+    "key_facts": [
+      "Tallest brick minaret in the world",
+      "Has 5 distinct storeys each with a projecting balcony",
+      "The Iron Pillar nearby has stood for 1600 years without rusting",
+      "Built to mark the beginning of Muslim rule in India",
+      "Leans slightly but is structurally stable"
+    ],
+    "cultural_importance": "Marks the onset of the Delhi Sultanate and Islamic architecture in India.",
+    "best_time_to_visit": "October to March",
+    "entry_fee": "\u20b935 for Indians, \u20b9550 for foreigners",
+    "fun_fact": "The Iron Pillar in the Qutub Minar complex is a metallurgical marvel \u2014 1600 years old and still rust-free."
+  },
+  "Hampi": {
+    "built_by": "Vijayanagara Empire (founded by Harihara I and Bukka Raya I)",
+    "year_built": "1336\u20131646",
+    "location": "Ballari District, Karnataka, India",
+    "type": "Ruined City / Temple Complex",
+    "architecture": "Vijayanagara style combining Dravidian temple architecture with Islamic influences. Characterized by tall gopurams (gateway towers), carved stone chariots, and monolithic sculptures. Spread across 26 sq km of boulder-strewn landscape.",
+    "unesco": true,
+    "seven_wonders": false,
+    "key_facts": [
+      "Capital of the Vijayanagara Empire, once the world\u2019s second-largest city",
+      "Over 1,600 surviving monuments including temples, palaces, and market streets",
+      "The Vittala Temple features the famous Stone Chariot and Musical Pillars",
+      "Hampi was sacked and destroyed in 1565 by the Deccan Sultanates",
+      "The Tungabhadra River flows alongside this sacred site"
+    ],
+    "cultural_importance": "Hampi was a thriving medieval city and the heart of Hindu culture, art, and commerce in South India. Its ruins tell the story of a golden age of Indian civilization.",
+    "best_time_to_visit": "October to February",
+    "entry_fee": "\u20b940 for Indians, \u20b9600 for foreigners",
+    "fun_fact": "The Stone Chariot at Vittala Temple is so precisely carved that its wheels actually rotated until authorities locked them to prevent damage."
+  },
+  "Konark Sun Temple": {
+    "built_by": "King Narasimhadeva I of the Eastern Ganga dynasty",
+    "year_built": "1250 CE",
+    "location": "Konark, Odisha, India",
+    "type": "Hindu Temple",
+    "architecture": "Kalinga architecture. The entire temple is designed as a colossal chariot of the Sun God Surya, with 24 elaborately carved stone wheels and 7 horses. Built with chlorite, laterite and khondalite stones. Features intricate erotic sculptures.",
+    "unesco": true,
+    "seven_wonders": false,
+    "key_facts": [
+      "Designed as a giant chariot with 24 wheels and 7 horses for the Sun God",
+      "The 24 wheels are also sundials that can tell accurate time to the minute",
+      "Once called the \u2018Black Pagoda\u2019 by European sailors as a navigational landmark",
+      "The main sanctum tower (deul) has partially collapsed over the centuries",
+      "Konark Dance Festival is held here every year in December"
+    ],
+    "cultural_importance": "One of the finest examples of Odishan temple architecture and a monument to India\u2019s advanced astronomical knowledge. The entire structure is an allegory of the passage of time.",
+    "best_time_to_visit": "October to March",
+    "entry_fee": "\u20b940 for Indians, \u20b9600 for foreigners",
+    "fun_fact": "The 24 stone chariot wheels serve as precise sundials \u2014 you can tell the time to the minute using the shadows they cast."
+  },
+  "Ajanta Caves": {
+    "built_by": "Buddhist monks and artisans under various Satavahana, Vakataka, and Chalukya dynasty patrons",
+    "year_built": "2nd century BCE \u2013 6th century CE",
+    "location": "Aurangabad District, Maharashtra, India",
+    "type": "Rock-cut Buddhist Cave Monuments",
+    "architecture": "Rock-cut architecture carved entirely into basalt cliffs. Comprises 30 caves including chaityas (prayer halls) and viharas (monasteries). Features the world\u2019s finest ancient mural paintings depicting Jataka tales and the life of Buddha.",
+    "unesco": true,
+    "seven_wonders": false,
+    "key_facts": [
+      "30 rock-cut Buddhist caves spanning over 700 years of art",
+      "The paintings use natural pigments and have survived 1,500+ years",
+      "Rediscovered by British officer John Smith in 1819 while tiger-hunting",
+      "The caves were abandoned around the 7th century and forgotten for over 1,000 years",
+      "Cave 1 and 2 contain the most celebrated Bodhisattva Padmapani paintings"
+    ],
+    "cultural_importance": "Ajanta represents the pinnacle of ancient Buddhist art and architecture. The murals are an unparalleled record of life, religion, and culture in ancient India.",
+    "best_time_to_visit": "November to March",
+    "entry_fee": "\u20b940 for Indians, \u20b9600 for foreigners",
+    "fun_fact": "The Ajanta caves were hidden in a horseshoe-shaped gorge and completely forgotten for over 1,000 years until their rediscovery in 1819."
+  },
+  "Hawa Mahal": {
+    "built_by": "Maharaja Sawai Pratap Singh",
+    "year_built": "1799",
+    "location": "Jaipur, Rajasthan, India",
+    "type": "Palace",
+    "architecture": "Rajput architecture with Islamic and Mughal influences. Built with red and pink sandstone. Has 953 small windows (jharokhas) decorated with intricate latticework.",
+    "unesco": false,
+    "seven_wonders": false,
+    "key_facts": [
+      "Name means 'Palace of Winds'",
+      "Built so royal ladies could observe street festivals without being seen",
+      "The facade resembles the crown of Lord Krishna",
+      "Has no front entrance \u2014 you enter from the rear",
+      "Five storeys tall but only one room deep"
+    ],
+    "cultural_importance": "Icon of Jaipur and Rajasthani culture, representing the purdah system and Rajput royal heritage.",
+    "best_time_to_visit": "November to February",
+    "entry_fee": "\u20b950 for Indians, \u20b9200 for foreigners",
+    "fun_fact": "The 953 windows were designed to allow cool air to circulate \u2014 a natural air conditioning system."
+  },
+  "India Gate": {
+    "built_by": "British Government, designed by Sir Edwin Lutyens",
+    "year_built": "1921\u20131931",
+    "location": "New Delhi, India",
+    "type": "War Memorial",
+    "architecture": "Neoclassical triumphal arch style. Built with Bharatpur stone. 42 meters tall. Names of 13,300 soldiers are inscribed on the walls.",
+    "unesco": false,
+    "seven_wonders": false,
+    "key_facts": [
+      "Originally called All India War Memorial",
+      "Commemorates 70,000 Indian soldiers who died in World War I",
+      "The Amar Jawan Jyoti flame burned continuously from 1971 to 2022",
+      "A popular picnic and leisure spot for Delhi residents",
+      "Canopy nearby originally housed a statue of King George V"
+    ],
+    "cultural_importance": "National monument and symbol of sacrifice. Central to India's Republic Day parade route.",
+    "best_time_to_visit": "October to March",
+    "entry_fee": "Free",
+    "fun_fact": "Over 13,300 names of British Indian soldiers are inscribed on the arch and its foundations."
+  }
+}
