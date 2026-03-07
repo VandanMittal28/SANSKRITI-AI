@@ -2,7 +2,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
+import re
 from pathlib import Path
+from datetime import date
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -10,22 +12,182 @@ from modules.chatbot import get_ai_response, get_demo_response
 from modules.quiz import get_quiz_questions
 from modules.recognition import get_all_monument_names, get_demo_result, get_monument_details, identify_monument
 from modules.sustainability import get_demo_sustainability_tips, get_sustainability_tips
-<<<<<<< HEAD
-from modules.gamification.dashboard import render_dashboard
-from modules.gamification.xp_system import award_xp as gamification_award_xp
-from modules.gamification.achievements import check_and_award_badges as gamification_check_and_award_badges
-from modules.gamification.hidden_gems import check_nearby_gems, show_gem_unlock_ui
-=======
->>>>>>> 07dc145c19582e5525ab4c2d7040077e47ce921b
 
 # -----------------------------------------------------------------------------
 # Page config
 # -----------------------------------------------------------------------------
 st.set_page_config(page_title="Sanskriti AI", page_icon="🏛️", layout="wide")
 
-# -----------------------------------------------------------------------------
-# Session state
-# -----------------------------------------------------------------------------
+# =============================================================================
+# ██╗   ██╗███████╗███████╗██████╗     ████████╗██╗   ██╗██████╗ ███████╗
+# ██║   ██║██╔════╝██╔════╝██╔══██╗    ╚══██╔══╝╚██╗ ██╔╝██╔══██╗██╔════╝
+# ██║   ██║███████╗█████╗  ██████╔╝       ██║    ╚████╔╝ ██████╔╝█████╗
+# ██║   ██║╚════██║██╔══╝  ██╔══██╗       ██║     ╚██╔╝  ██╔═══╝ ██╔══╝
+# ╚██████╔╝███████║███████╗██║  ██║       ██║      ██║   ██║     ███████╗
+#  ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝       ╚═╝      ╚═╝   ╚═╝     ╚══════╝
+# USER TYPE — FEATURE 1 (Person 1)
+# =============================================================================
+
+USER_TYPES = {
+    "student": {
+        "label": "🎓 Student",
+        "subtitle": "Curriculum-aligned learning with quizzes & XP",
+        "color": "#4B9B8E",
+        "border": "rgba(75, 155, 142, 0.5)",
+        "bg": "rgba(75, 155, 142, 0.08)",
+        "chatbot_persona": (
+            "You are an educational heritage guide for students. "
+            "Use simple language, explain historical dates and rulers clearly, "
+            "mention architectural terms with definitions, connect facts to school curriculum. "
+            "End responses with a quiz hint or interesting fact to remember."
+        ),
+        "content_focus": ["Historical dates & rulers", "Architectural features", "Cultural significance", "Quiz-ready facts"],
+        "recommended_duration": "20–30 min per monument",
+        "icon": "🎓",
+    },
+    "tourist": {
+        "label": "🧳 Tourist",
+        "subtitle": "Story-driven exploration with photography & culture tips",
+        "color": "#D4893F",
+        "border": "rgba(212, 137, 63, 0.5)",
+        "bg": "rgba(212, 137, 63, 0.08)",
+        "chatbot_persona": (
+            "You are a warm, storytelling heritage guide for tourists visiting India. "
+            "Use vivid, conversational language. Share legends, local myths, photography tips, "
+            "best spots, nearby food, and cultural experiences. Make the visitor feel the magic."
+        ),
+        "content_focus": ["Stories & legends", "Photography spots", "Cultural experiences", "Local tips & food"],
+        "recommended_duration": "1–2 hours per monument",
+        "icon": "🧳",
+    },
+}
+
+def get_user_type():
+    return st.session_state.get("user_type", "tourist")
+
+def get_chatbot_persona():
+    return USER_TYPES.get(get_user_type(), USER_TYPES["tourist"])["chatbot_persona"]
+
+def get_user_config():
+    return USER_TYPES.get(get_user_type(), USER_TYPES["tourist"])
+
+
+# =============================================================================
+# ████████╗██╗███╗   ███╗███████╗    ████████╗██████╗  █████╗ ██╗   ██╗███████╗██╗
+# ╚══██╔══╝██║████╗ ████║██╔════╝    ╚══██╔══╝██╔══██╗██╔══██╗██║   ██║██╔════╝██║
+#    ██║   ██║██╔████╔██║█████╗         ██║   ██████╔╝███████║██║   ██║█████╗  ██║
+#    ██║   ██║██║╚██╔╝██║██╔══╝         ██║   ██╔══██╗██╔══██║╚██╗ ██╔╝██╔══╝  ██║
+#    ██║   ██║██║ ╚═╝ ██║███████╗       ██║   ██║  ██║██║  ██║ ╚████╔╝ ███████╗███████╗
+#    ╚═╝   ╚═╝╚═╝     ╚═╝╚══════╝       ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚══════╝
+# TIME TRAVEL — FEATURE 2 (Person 1)
+# =============================================================================
+
+TIME_PERIODS = [
+    {
+        "key": "construction",
+        "label": "🏗️ Construction Era",
+        "period": "~1630s–1650s",
+        "description": "The monument is being built. Thousands of artisans at work, scaffolding everywhere, raw stone being carved into history.",
+        "prompt": "during construction, scaffolding, workers, unfinished, 17th century India, architectural marvel being built, wide angle, professional illustration",
+    },
+    {
+        "key": "peak_glory",
+        "label": "✨ Peak Glory",
+        "period": "~1700s",
+        "description": "At the height of Mughal power. The monument gleams in its full original glory — vibrant colours, royal ceremonies, bustling courts.",
+        "prompt": "at peak Mughal glory, vibrant colors, royal gardens, nobility, grand ceremonies, historical illustration style, wide angle",
+    },
+    {
+        "key": "colonial",
+        "label": "🇬🇧 Colonial Era",
+        "period": "~1800s",
+        "description": "Under British rule. The monument has aged, early photography era, colonial visitors exploring ancient ruins.",
+        "prompt": "during British colonial era 1800s, sepia tone, weathered, Victorian-era visitors, historical photograph style, wide angle",
+    },
+    {
+        "key": "modern",
+        "label": "📸 Modern Day",
+        "period": "Present",
+        "description": "Today — fully restored, UNESCO protected, millions of visitors from around the world experiencing living history.",
+        "prompt": "modern day, tourists visiting, clear blue sky, professionally restored, golden hour photography, wide angle",
+    },
+]
+
+# Fallback images (Wikipedia public domain) — app works without AI-generated images
+# Era descriptions used for the placeholder cards when no image is available
+FALLBACK_IMAGES = {}  # Empty — we use styled placeholder cards instead
+
+def _monument_slug(name):
+    return name.lower().replace(" ", "_").replace("'", "")
+
+def _get_time_travel_image(monument_name, period_key, base_dir):
+    slug = _monument_slug(monument_name)
+    for ext in [".jpg", ".webp", ".png"]:
+        p = base_dir / "assets" / "time_travel" / slug / f"{period_key}{ext}"
+        if p.exists():
+            return str(p), "local"
+    url = FALLBACK_IMAGES.get(monument_name, {}).get(period_key,
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Taj_Mahal%2C_Agra%2C_India_edit3.jpg/800px-Taj_Mahal%2C_Agra%2C_India_edit3.jpg")
+    return url, "url"
+
+
+# =============================================================================
+# ███████╗███████╗███████╗████████╗██╗██╗   ██╗ █████╗ ██╗
+# ██╔════╝██╔════╝██╔════╝╚══██╔══╝██║██║   ██║██╔══██╗██║
+# █████╗  █████╗  ███████╗   ██║   ██║██║   ██║███████║██║
+# ██╔══╝  ██╔══╝  ╚════██║   ██║   ██║╚██╗ ██╔╝██╔══██║██║
+# ██║     ███████╗███████║   ██║   ██║ ╚████╔╝ ██║  ██║███████╗
+# ╚═╝     ╚══════╝╚══════╝   ╚═╝   ╚═╝  ╚═══╝  ╚═╝  ╚═╝╚══════╝
+# FESTIVAL CALENDAR — FEATURE 3 (Person 1)
+# =============================================================================
+
+FESTIVALS = [
+    {"name":"Republic Day Parade","month":1,"day":26,"location":"New Delhi","state":"Delhi","monuments":["India Gate","Red Fort"],"type":"National","icon":"🇮🇳","significance":"Grand military parade celebrating India's Constitution. PM hoists flag at Red Fort.","historical_context":"The parade passes India Gate — built to honour Indian soldiers of WWI, a poignant symbol of sacrifice and independence.","visitor_tip":"Arrive by 5 AM, roads close early. Best viewed near India Gate.","duration":"1 day"},
+    {"name":"Taj Mahotsav","month":2,"day":18,"location":"Agra","state":"Uttar Pradesh","monuments":["Taj Mahal"],"type":"Cultural","icon":"🎪","significance":"10-day crafts festival celebrating Mughal era arts, crafts, cuisine and music near the Taj Mahal.","historical_context":"Revives the grandeur of the Mughal court — the same artisan traditions that built the Taj are celebrated here.","visitor_tip":"Best time to buy authentic Agra crafts — marble inlay, zardosi embroidery, and petha sweets.","duration":"10 days (Feb 18–27)"},
+    {"name":"Holi","month":3,"day":14,"location":"Vrindavan / Mathura","state":"Uttar Pradesh","monuments":["Taj Mahal"],"type":"Religious","icon":"🎨","significance":"Festival of colours celebrating victory of good over evil. Most vibrant in Vrindavan.","historical_context":"The Taj Mahal appears pink at dawn on Holi. Mughal courts celebrated Holi with rosewater and saffron.","visitor_tip":"Visit Taj at sunrise during Holi week for the most photogenic pink glow. Wear white to Vrindavan.","duration":"2 days"},
+    {"name":"Independence Day","month":8,"day":15,"location":"Red Fort, Delhi","state":"Delhi","monuments":["Red Fort","India Gate"],"type":"National","icon":"🚩","significance":"PM hoists national flag at Red Fort and addresses the nation — as has happened since 1947.","historical_context":"The last Mughal emperor was imprisoned in this very fort after 1857. Today it symbolises free India.","visitor_tip":"Entry is free but registration required. Flag hoisting at 7 AM — arrive by 5 AM.","duration":"1 day"},
+    {"name":"Hampi Utsav","month":11,"day":3,"location":"Hampi","state":"Karnataka","monuments":["Hampi"],"type":"Cultural","icon":"🏛️","significance":"3-day state festival at the Vijayanagara ruins. Classical dance, music, puppet shows, coracle races.","historical_context":"Revives the cultural magnificence of a city that was once the world's second-largest — sacked in 1565.","visitor_tip":"Sunrise at Matanga Hill with the festival backdrop is one of India's most spectacular sights.","duration":"3 days"},
+    {"name":"Konark Dance Festival","month":12,"day":1,"location":"Konark","state":"Odisha","monuments":["Konark Sun Temple"],"type":"Cultural","icon":"💃","significance":"5-day classical dance festival with the illuminated Sun Temple as backdrop. Odissi, Bharatanatyam, Kathak.","historical_context":"The temple's sculptures include hundreds of dance poses — the festival reclaims this as sacred art space.","visitor_tip":"Evening performances at 6:30 PM. Sit on sand facing the temple. Bring a shawl — December is cold.","duration":"5 days (Dec 1–5)"},
+    {"name":"Diwali","month":11,"day":1,"location":"Pan India — best at Varanasi / Jaipur","state":"Pan India","monuments":["Red Fort","Hawa Mahal","Taj Mahal","India Gate"],"type":"Religious & Cultural","icon":"🪔","significance":"Festival of Lights. Red Fort and Hawa Mahal illuminate spectacularly. Varanasi's Dev Deepawali is magical.","historical_context":"The Taj Mahal shimmers golden under diyas. Shah Jahan reportedly held grand Diwali celebrations at Agra Fort.","visitor_tip":"Hawa Mahal's 953 windows glow during Diwali — most photogenic spot in Jaipur.","duration":"5 days"},
+    {"name":"Qutub Festival","month":10,"day":25,"location":"New Delhi","state":"Delhi","monuments":["Qutub Minar"],"type":"Cultural","icon":"🌙","significance":"3-day classical music and dance with the illuminated Qutub Minar as dramatic backdrop.","historical_context":"Built to call Muslims to prayer — today it hosts classical Hindu and Sufi music, a symbol of composite culture.","visitor_tip":"Evening concerts at 6:30 PM. The Minar glows golden under lights. Bring a blanket.","duration":"3 days"},
+    {"name":"Ganesh Chaturthi","month":9,"day":7,"location":"Mumbai / Pune","state":"Maharashtra","monuments":["Ajanta Caves"],"type":"Religious","icon":"🐘","significance":"10-day festival honouring Ganesha. Mumbai's Lalbaugcha Raja draws 1.5 million visitors daily.","historical_context":"Popularised by Bal Gangadhar Tilak in 1893 to unite people against British rule — a heritage of resistance.","visitor_tip":"Visit Ajanta Caves (400 km from Pune) the week before — quieter and spiritually connected.","duration":"10 days"},
+    {"name":"Pushkar Camel Fair","month":11,"day":9,"location":"Pushkar","state":"Rajasthan","monuments":["Hawa Mahal"],"type":"Cultural & Trade","icon":"🐪","significance":"World's largest camel fair. 50,000+ camels traded. Combined with Kartik Purnima holy bathing.","historical_context":"This fair has taken place for centuries — referenced in Mughal records. Akbar's court bought horses here.","visitor_tip":"Combine with Jaipur (150 km) and Hawa Mahal. Sunsets over the camels with Aravalli hills are magical.","duration":"5 days"},
+    {"name":"Rath Yatra — Puri","month":7,"day":3,"location":"Puri","state":"Odisha","monuments":["Konark Sun Temple"],"type":"Religious","icon":"🛕","significance":"Ancient chariot procession of Lord Jagannath. One of the world's oldest and largest religious gatherings.","historical_context":"The English word 'juggernaut' derives from 'Jagannath' — colonial Europeans were awestruck by the 45-foot wooden chariots.","visitor_tip":"Pair with Konark visit (65 km). The beach at Puri is beautiful in July monsoons.","duration":"9 days"},
+    {"name":"Jaipur Literature Festival","month":1,"day":22,"location":"Jaipur","state":"Rajasthan","monuments":["Hawa Mahal"],"type":"Cultural","icon":"📚","significance":"World's largest free literary festival. 300+ authors and speakers over 5 days at Diggi Palace.","historical_context":"Jaipur was the world's first planned city (1727). Its pink colour was painted for the Prince of Wales in 1876.","visitor_tip":"Hawa Mahal is 2 km from the venue. Early morning at Hawa Mahal before festival crowds is ideal.","duration":"5 days"},
+    {"name":"Delhi Heritage Festival","month":2,"day":14,"location":"Delhi","state":"Delhi","monuments":["Red Fort","Qutub Minar","India Gate"],"type":"Cultural","icon":"🏙️","significance":"10-day heritage walk festival tracing Delhi's 3000-year history across 7 successive empires.","historical_context":"Delhi has been capital of seven empires — the festival traces all seven through walking routes between monuments.","visitor_tip":"The night heritage walk around Qutub Minar is eerie and beautiful. Book early — limited group sizes.","duration":"10 days"},
+    {"name":"Buddha Purnima","month":5,"day":12,"location":"Sarnath / Bodh Gaya","state":"Uttar Pradesh","monuments":[],"type":"Religious","icon":"☸️","significance":"Celebrates birth, enlightenment and death of Gautama Buddha on the Vaisakha full moon.","historical_context":"Sarnath is where Buddha gave his first sermon. Ashoka built the Dhamek Stupa here — standing for 2,300 years.","visitor_tip":"Sarnath is 13 km from Varanasi. Visit the Dhamek Stupa at sunrise for a peaceful experience.","duration":"1 day"},
+    {"name":"Navratri Garba","month":10,"day":2,"location":"Ahmedabad / Vadodara","state":"Gujarat","monuments":[],"type":"Religious & Cultural","icon":"💃","significance":"Nine nights of Garba dance honouring the Goddess. Gujarat's Navratri Garba is UNESCO-listed intangible heritage.","historical_context":"Garba traces roots to fertility rituals of the Indus Valley Civilisation. The circular dance symbolises the cycle of life.","visitor_tip":"Buy a traditional chaniya choli / kurta to participate. Best Garba is at private society events.","duration":"9 nights"},
+    {"name":"Kite Festival (Uttarayan)","month":1,"day":14,"location":"Ahmedabad","state":"Gujarat","monuments":[],"type":"Cultural","icon":"🪁","significance":"International Kite Festival marking Makar Sankranti. Thousands of kites fill the sky across Gujarat.","historical_context":"Referenced in Mughal era texts — Akbar himself was reportedly fond of kite flying.","visitor_tip":"Book accommodation months in advance. Sabarmati Riverfront offers excellent viewing.","duration":"2 days"},
+]
+
+def _days_until(month, day):
+    today = date.today()
+    try:
+        this_year = date(today.year, month, day)
+        if this_year >= today:
+            return (this_year - today).days
+        return (date(today.year + 1, month, day) - today).days
+    except Exception:
+        return 365
+
+def get_festivals_for_monument(monument_name):
+    result = []
+    for f in FESTIVALS:
+        if monument_name in f.get("monuments", []):
+            result.append({**f, "days_until": _days_until(f["month"], f["day"])})
+    return sorted(result, key=lambda x: x["days_until"])
+
+def _month_name(m):
+    return ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][m]
+
+def _fest_type_color(t):
+    return {"National":"#4B9B8E","Religious":"#C9A84C","Cultural":"#D4893F","Harvest":"#7EA87E",
+            "Temple Festival":"#C45B3A","Religious & Cultural":"#C9A84C","Cultural & Trade":"#8E6B4B"}.get(t,"#8A7560")
+
+
+# =============================================================================
+# SESSION STATE
+# =============================================================================
 if "uploaded_image" not in st.session_state:
     st.session_state.uploaded_image = None
 if "chat_history" not in st.session_state:
@@ -44,8 +206,6 @@ if "quiz_started" not in st.session_state:
     st.session_state["quiz_started"] = False
 if "quiz_completed" not in st.session_state:
     st.session_state["quiz_completed"] = False
-
-# ── Gamification / XP ─────────────────────────────────────────────────────────
 if "xp" not in st.session_state:
     st.session_state["xp"] = 0
 if "achievements" not in st.session_state:
@@ -64,21 +224,24 @@ if "lang" not in st.session_state:
     st.session_state["lang"] = "en"
 if "page_id" not in st.session_state:
     st.session_state["page_id"] = "home"
+# NEW — User type
+if "user_type" not in st.session_state:
+    st.session_state["user_type"] = None
+if "user_type_selected" not in st.session_state:
+    st.session_state["user_type_selected"] = False
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Translations (English / Hindi)
-# ─────────────────────────────────────────────────────────────────────────────
+# =============================================================================
+# TRANSLATIONS
+# =============================================================================
 TRANSLATIONS = {
-    # Page names
     "page_home":           {"en": "🏠 Home",                  "hi": "🏠 होम"},
     "page_recognition":    {"en": "🔍 Monument Recognition",  "hi": "🔍 स्मारक पहचान"},
     "page_chatbot":        {"en": "🤖 AI Chatbot",            "hi": "🤖 AI चैटबॉट"},
     "page_sustainability": {"en": "🌿 Sustainability",        "hi": "🌿 संधारणीयता"},
     "page_quiz":           {"en": "🧠 Quiz",                  "hi": "🧠 क्विज़"},
     "page_achievements":   {"en": "🏅 Achievements",          "hi": "🏅 उपलब्धियाँ"},
-
-    # Sidebar
+    "page_festival":       {"en": "🗓️ Festival Calendar",     "hi": "🗓️ उत्सव कैलेंडर"},  # NEW
     "sidebar_title":       {"en": "🏛️ Sanskriti",             "hi": "🏛️ संस्कृति"},
     "sidebar_subtitle":    {"en": "AI Heritage Guide",        "hi": "AI विरासत गाइड"},
     "explorer_progress":   {"en": "🎮 Explorer Progress",     "hi": "🎮 एक्सप्लोरर प्रगति"},
@@ -87,8 +250,6 @@ TRANSLATIONS = {
     "max_level":           {"en": "Max level reached! 🎉",    "hi": "अधिकतम स्तर! 🎉"},
     "xp_to_next":          {"en": "XP to next level",         "hi": "XP अगले स्तर तक"},
     "lang_toggle":         {"en": "🇮🇳 हिंदी में देखें",        "hi": "🇬🇧 Switch to English"},
-
-    # Home
     "hero_badge":          {"en": "✦ AI-Powered Heritage Guide", "hi": "✦ AI-संचालित विरासत गाइड"},
     "hero_title_1":        {"en": "Discover India's",            "hi": "भारत की"},
     "hero_title_2":        {"en": "Living Heritage",             "hi": "जीवित विरासत खोजें"},
@@ -114,8 +275,6 @@ TRANSLATIONS = {
     "tech_stack":          {"en": "🛠️ Tech Stack",            "hi": "🛠️ टेक स्टैक"},
     "problem_solved":      {"en": "🎯 Problem Solved",        "hi": "🎯 समस्या हल"},
     "impact":              {"en": "🌍 Impact",                "hi": "🌍 प्रभाव"},
-
-    # Recognition
     "monument_recognition":    {"en": "Monument Recognition",          "hi": "स्मारक पहचान"},
     "select_monument":         {"en": "🗺️ Select a monument to explore (or upload an image below):",
                                 "hi": "🗺️ एक स्मारक चुनें (या नीचे छवि अपलोड करें):"},
@@ -132,27 +291,22 @@ TRANSLATIONS = {
     "tab_facts":               {"en": "📊 Key Facts",                 "hi": "📊 मुख्य तथ्य"},
     "tab_fun":                 {"en": "💡 Fun Facts",                 "hi": "💡 रोचक तथ्य"},
     "tab_visitor":             {"en": "🎯 Visitor Info",              "hi": "🎯 दर्शक जानकारी"},
+    "tab_timetravel":          {"en": "⏳ Time Travel",               "hi": "⏳ टाइम ट्रेवल"},  # NEW
     "share_exploration":       {"en": "📲 Share Your Exploration",     "hi": "📲 अपनी खोज साझा करें"},
     "copy_share":              {"en": "Copy & share on social media:", "hi": "कॉपी करें और सोशल मीडिया पर साझा करें:"},
     "go_to_quiz":              {"en": "Go to Quiz →",                 "hi": "क्विज़ पर जाएं →"},
     "upload_or_select":        {"en": "📸 Upload a monument image above, or select one from the dropdown to begin",
                                 "hi": "📸 ऊपर एक स्मारक छवि अपलोड करें, या ड्रॉपडाउन से चुनें"},
-
-    # Chatbot
     "ai_chatbot":              {"en": "🤖 AI Heritage Chatbot",       "hi": "🤖 AI विरासत चैटबॉट"},
     "chatting_about":          {"en": "🏛️ Chatting about",            "hi": "🏛️ बातचीत हो रही है"},
     "ask_anything":            {"en": "Ask anything about",           "hi": "कुछ भी पूछें"},
     "thinking":                {"en": "🤔 Thinking...",               "hi": "🤔 सोच रहा हूँ..."},
     "clear_chat":              {"en": "🗑️ Clear Chat",                "hi": "🗑️ चैट साफ़ करें"},
-
-    # Sustainability
     "sustainable_tourism":     {"en": "Sustainable & Responsible Tourism", "hi": "संधारणीय और जिम्मेदार पर्यटन"},
     "sustainability_tips_for": {"en": "🌿 Sustainability tips for",       "hi": "🌿 संधारणीयता सुझाव"},
     "environmental_tips":      {"en": "🌱 Environmental Tips",            "hi": "🌱 पर्यावरण सुझाव"},
     "cultural_respect":        {"en": "🏛️ Cultural Respect",             "hi": "🏛️ सांस्कृतिक सम्मान"},
     "responsible_photo":       {"en": "📸 Responsible Photography",       "hi": "📸 जिम्मेदार फ़ोटोग्राफ़ी"},
-
-    # Quiz
     "heritage_quiz":           {"en": "🧠 Heritage Knowledge Quiz",    "hi": "🧠 विरासत ज्ञान क्विज़"},
     "quiz_about":              {"en": "🏛️ Quiz about",                 "hi": "🏛️ क्विज़ विषय"},
     "start_quiz":              {"en": "🚀 Start Quiz",                 "hi": "🚀 क्विज़ शुरू करें"},
@@ -161,8 +315,6 @@ TRANSLATIONS = {
     "retake_quiz":             {"en": "🔄 Retake Quiz",               "hi": "🔄 दोबारा दें"},
     "review_answers":          {"en": "📋 Review Your Answers:",       "hi": "📋 अपने उत्तर देखें:"},
     "share_achievement":       {"en": "📲 Share Your Achievement",     "hi": "📲 अपनी उपलब्धि साझा करें"},
-
-    # Achievements
     "achievements_title":      {"en": "🏅 Achievements & Explorer Progress", "hi": "🏅 उपलब्धियाँ और एक्सप्लोरर प्रगति"},
     "current_level":           {"en": "Current Level",                "hi": "वर्तमान स्तर"},
     "xp_earned":               {"en": "XP earned",                    "hi": "XP अर्जित"},
@@ -172,711 +324,164 @@ TRANSLATIONS = {
     "unlocked":                {"en": "✅ Unlocked",                  "hi": "✅ अनलॉक"},
     "no_monuments_yet":        {"en": "🏛️ You haven't explored any monuments yet — go to **Monument Recognition** to start!",
                                 "hi": "🏛️ आपने अभी तक कोई स्मारक नहीं खोजा — **स्मारक पहचान** पर जाएं!"},
-
-    # Footer
     "footer_left":            {"en": "SANSKRITI AI © 2025",           "hi": "संस्कृति AI © 2025"},
     "footer_right":           {"en": "BUILT WITH ♥ FOR INDIA'S HERITAGE",
                                "hi": "भारत की विरासत के लिए ♥ से बनाया गया"},
 }
 
-# Page ID → translation key mapping
-PAGE_IDS = ["home", "recognition", "chatbot", "sustainability", "quiz", "achievements"]
-PAGE_KEYS = ["page_home", "page_recognition", "page_chatbot", "page_sustainability", "page_quiz", "page_achievements"]
+PAGE_IDS  = ["home", "recognition", "chatbot", "sustainability", "quiz", "achievements", "festival"]
+PAGE_KEYS = ["page_home", "page_recognition", "page_chatbot", "page_sustainability", "page_quiz", "page_achievements", "page_festival"]
 
-
-def T(key: str) -> str:
-    """Return translated string for the current language."""
+def T(key):
     lang = st.session_state.get("lang", "en")
     entry = TRANSLATIONS.get(key, {})
     return entry.get(lang, entry.get("en", key))
 
-
-XP_RULES = {
-    "view_monument": 10,
-    "complete_quiz": 20,
-    "ask_chatbot": 5,
-}
-
-LEVELS = [
-    (0,   "🌱 Beginner Explorer"),
-    (50,  "🏛️ Heritage Explorer"),
-    (150, "🎓 Cultural Pro"),
-    (300, "👑 Sanskriti Legend"),
-]
-
+XP_RULES = {"view_monument": 10, "complete_quiz": 20, "ask_chatbot": 5}
+LEVELS = [(0,"🌱 Beginner Explorer"),(50,"🏛️ Heritage Explorer"),(150,"🎓 Cultural Pro"),(300,"👑 Sanskriti Legend")]
 BADGES = {
     "first_visit":       ("🏆", "First Monument Visited",    "Explored your first monument"),
     "quiz_master":       ("🧠", "Quiz Master",               "Completed 2 quizzes"),
     "heritage_champion": ("🌟", "Heritage Champion",         "Earned 150+ XP"),
 }
 
-
-def award_xp(reason: str) -> int:
-    """Add XP for the given reason key, check achievements, return points earned."""
+def award_xp(reason):
     points = XP_RULES.get(reason, 0)
     st.session_state["xp"] += points
-    st.session_state["xp_log"].append(f"+{points} XP — {reason.replace('_', ' ').title()}")
-<<<<<<< HEAD
-    
-    # Sync Gamification System
-    gamification_award_xp("demo_user", points)
-    
-=======
->>>>>>> 07dc145c19582e5525ab4c2d7040077e47ce921b
+    st.session_state["xp_log"].append(f"+{points} XP — {reason.replace('_',' ').title()}")
     _check_achievements()
     return points
 
-
 def _check_achievements():
-    xp    = st.session_state["xp"]
-    ach   = st.session_state["achievements"]
-    vis   = st.session_state["monuments_visited"]
+    xp = st.session_state["xp"]
+    ach = st.session_state["achievements"]
+    vis = st.session_state["monuments_visited"]
     quizz = st.session_state["quizzes_completed"]
-
     if vis and "first_visit" not in ach:
-        ach.add("first_visit")
-        st.toast("🏆 Achievement Unlocked: First Monument Visited!", icon="🏆")
+        ach.add("first_visit"); st.toast("🏆 Achievement Unlocked: First Monument Visited!", icon="🏆")
     if quizz >= 2 and "quiz_master" not in ach:
-        ach.add("quiz_master")
-        st.toast("🧠 Achievement Unlocked: Quiz Master!", icon="🧠")
+        ach.add("quiz_master"); st.toast("🧠 Achievement Unlocked: Quiz Master!", icon="🧠")
     if xp >= 150 and "heritage_champion" not in ach:
-        ach.add("heritage_champion")
-        st.toast("🌟 Achievement Unlocked: Heritage Champion!", icon="🌟")
-
+        ach.add("heritage_champion"); st.toast("🌟 Achievement Unlocked: Heritage Champion!", icon="🌟")
     st.session_state["achievements"] = ach
-<<<<<<< HEAD
-    
-    # Sync Gamification System Badges
-    new_badges = gamification_check_and_award_badges("demo_user", xp, len(vis), quizz > 0)
-    for badge in new_badges:
-        st.toast(f"{badge['icon']} New Badge Unlocked: {badge['title']}", icon=badge['icon'])
-=======
->>>>>>> 07dc145c19582e5525ab4c2d7040077e47ce921b
 
-
-def get_level(xp: int) -> str:
+def get_level(xp):
     level = LEVELS[0][1]
     for threshold, label in LEVELS:
-        if xp >= threshold:
-            level = label
+        if xp >= threshold: level = label
     return level
 
-
-def get_next_level_xp(xp: int) -> int | None:
+def get_next_level_xp(xp):
     for threshold, _ in LEVELS:
-        if xp < threshold:
-            return threshold
+        if xp < threshold: return threshold
     return None
 
+def generate_caption(monument_name):
+    return (f"🏛️ Just explored {monument_name} with Sanskriti AI!\n"
+            f"Discovering India's heritage through AI-powered storytelling.\n"
+            f"#SanskritiAI #HeritageExplorer #IncredibleIndia #{monument_name.replace(' ','')}")
 
-def generate_caption(monument_name: str) -> str:
-    """Generate a shareable social media caption for a monument."""
-    return (
-        f"🏛️ Just explored {monument_name} with Sanskriti AI!\n"
-        f"Discovering India's heritage through AI-powered storytelling.\n"
-        f"#SanskritiAI #HeritageExplorer #IncredibleIndia #{monument_name.replace(' ', '')}"
-    )
 
-<<<<<<< HEAD
-=======
-
-def render_voice_guide(monument_name: str) -> None:
-    """Render a voice guide section for listening to monument narration.
-
-    The function displays a simple interface to select a language and play 
-    the corresponding audio file. Audio files follow the naming pattern:
-    {monument_name_lowercase_with_underscores}_{language_code}.mp3
-
-    Args:
-        monument_name: The name of the monument (e.g., "Taj Mahal").
-    """
-    # Reset per‑monument state when name changes
-    prev = st.session_state.get("last_voice_monument")
-    if prev != monument_name:
-        for key in list(st.session_state.keys()):
-            if key.startswith("voice_clicked_") or key.startswith("voice_lang_"):
-                st.session_state.pop(key, None)
-        st.session_state["last_voice_monument"] = monument_name
-
-    with st.container():
-        st.markdown("## 🎧 Voice Guide")
-        clicked = st.button("Listen to Emperor", key=f"listen_{monument_name}")
-        if clicked:
-            st.session_state[f"voice_clicked_{monument_name}"] = True
-
-        if st.session_state.get(f"voice_clicked_{monument_name}", False):
-            lang = st.radio("Language", ["English", "Hindi"], key=f"voice_lang_{monument_name}")
-
-            # Convert monument name to file format: lowercase, replace spaces with underscores
-            clean_name = monument_name.lower().strip().replace(" ", "_")
-            
-            # Determine language suffix
-            lang_suffix = "en" if lang == "English" else "hi"
-            
-            # Build absolute path to audio file
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            audio_file = os.path.join(base_dir, "assets", "audio", f"{clean_name}_{lang_suffix}.mp3")
-            
-            # Display the file path being searched for (debug)
-            st.write(f"Looking for: `{clean_name}_{lang_suffix}.mp3`")
-            
-            # Check if file exists and play it
-            if os.path.exists(audio_file):
-                st.audio(audio_file)
-            else:
-                st.error(f"Audio file not found: {clean_name}_{lang_suffix}.mp3")
-
->>>>>>> 07dc145c19582e5525ab4c2d7040077e47ce921b
-# -----------------------------------------------------------------------------
-# Custom CSS — Indian Heritage Theme
-# -----------------------------------------------------------------------------
+# =============================================================================
+# CSS
+# =============================================================================
 st.markdown("""
 <style>
-
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Philosopher:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
-
 :root {
-  --saffron: #D4893F;
-  --saffron-light: #E8A85C;
-  --saffron-dim: rgba(212, 137, 63, 0.12);
-  --gold: #C9A84C;
-  --gold-light: #E8C97A;
-  --gold-dim: rgba(201, 168, 76, 0.12);
-  --terracotta: #C45B3A;
-  --maroon: #7A2E3B;
-  --deep-indigo: #1B1040;
-  --temple-dark: #120E24;
-  --bg-primary: #0F0B1E;
-  --bg-secondary: #161230;
-  --bg-card: rgba(28, 22, 56, 0.85);
-  --bg-card-hover: rgba(35, 28, 68, 0.95);
-  --border: rgba(201, 168, 76, 0.2);
-  --border-strong: rgba(212, 137, 63, 0.5);
-  --text-primary: #F5E6D3;
-  --text-secondary: #C4A882;
-  --text-muted: #8A7560;
-  --accent-teal: #4B9B8E;
-  --success: #4B8E6E;
-  --radius: 14px;
-  --radius-lg: 22px;
+  --saffron: #D4893F; --saffron-light: #E8A85C; --saffron-dim: rgba(212,137,63,0.12);
+  --gold: #C9A84C; --gold-light: #E8C97A; --gold-dim: rgba(201,168,76,0.12);
+  --terracotta: #C45B3A; --maroon: #7A2E3B; --deep-indigo: #1B1040; --temple-dark: #120E24;
+  --bg-primary: #0F0B1E; --bg-secondary: #161230; --bg-card: rgba(28,22,56,0.85);
+  --bg-card-hover: rgba(35,28,68,0.95); --border: rgba(201,168,76,0.2); --border-strong: rgba(212,137,63,0.5);
+  --text-primary: #F5E6D3; --text-secondary: #C4A882; --text-muted: #8A7560;
+  --accent-teal: #4B9B8E; --success: #4B8E6E; --radius: 14px; --radius-lg: 22px;
 }
-
 *, *::before, *::after { box-sizing: border-box; }
-
-.stApp {
-  background: linear-gradient(170deg, #0F0B1E 0%, #1B1040 30%, #1A0E30 60%, #120E24 100%) !important;
-  font-family: 'DM Sans', sans-serif !important;
-  color: var(--text-primary) !important;
-}
-
-/* Subtle mandala watermark */
-.stApp::before {
-  content: '';
-  position: fixed;
-  top: -20%; right: -15%;
-  width: 900px; height: 900px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Ccircle cx='100' cy='100' r='90' fill='none' stroke='%23C9A84C' stroke-width='0.3' opacity='0.08'/%3E%3Ccircle cx='100' cy='100' r='70' fill='none' stroke='%23C9A84C' stroke-width='0.3' opacity='0.06'/%3E%3Ccircle cx='100' cy='100' r='50' fill='none' stroke='%23C9A84C' stroke-width='0.3' opacity='0.05'/%3E%3Ccircle cx='100' cy='100' r='30' fill='none' stroke='%23D4893F' stroke-width='0.4' opacity='0.06'/%3E%3Cpath d='M100 10 L100 190 M10 100 L190 100 M29 29 L171 171 M171 29 L29 171' stroke='%23C9A84C' stroke-width='0.2' opacity='0.04'/%3E%3C/svg%3E");
-  background-size: contain;
-  background-repeat: no-repeat;
-  pointer-events: none;
-  z-index: 0;
-  animation: floatMandala 60s ease-in-out infinite;
-}
-
-/* Grain overlay */
-.stApp::after {
-  content: '';
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.3;
-}
-
-@keyframes floatMandala {
-  0%, 100% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(15deg) scale(1.05); }
-}
-
-.main .block-container {
-  padding: 2rem 3rem 4rem 3rem !important;
-  max-width: 1200px !important;
-}
-
-/* ── Sidebar — Temple corridor feel ──────────────────────────────────────── */
-[data-testid="stSidebar"] {
-  background: linear-gradient(180deg, #0D0820 0%, #130E28 50%, #0D0820 100%) !important;
-  border-right: 1px solid rgba(201,168,76,0.15) !important;
-  box-shadow: 4px 0 30px rgba(0,0,0,0.4) !important;
-}
-
-[data-testid="stSidebar"]::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, var(--saffron), var(--gold), var(--saffron), transparent);
-}
-
-[data-testid="stSidebar"] > div { padding: 2rem 1.2rem !important; }
-
-[data-testid="stSidebar"] h1,
-[data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3 {
-  font-family: 'Cinzel', serif !important;
-  color: var(--gold) !important;
-  letter-spacing: 0.05em !important;
-}
-
-[data-testid="stSidebar"] .stRadio > label {
-  color: var(--text-secondary) !important;
-  font-size: 0.8rem !important;
-  letter-spacing: 0.12em !important;
-  text-transform: uppercase !important;
-  font-weight: 500 !important;
-}
-
-[data-testid="stSidebar"] .stRadio [data-testid="stMarkdownContainer"] p {
-  font-family: 'DM Sans', sans-serif !important;
-  font-size: 0.92rem !important;
-  color: var(--text-primary) !important;
-  letter-spacing: 0.02em !important;
-}
-
-[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
-  border-radius: 10px !important;
-  padding: 0.55rem 0.8rem !important;
-  margin: 3px 0 !important;
-  transition: all 0.3s ease !important;
-  border: 1px solid transparent !important;
-  position: relative !important;
-}
-
-[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover {
-  background: linear-gradient(135deg, rgba(212,137,63,0.08), rgba(201,168,76,0.08)) !important;
-  border-color: rgba(201,168,76,0.2) !important;
-}
-
-[data-testid="stSidebar"] .stCaption {
-  color: var(--text-muted) !important;
-  font-size: 0.75rem !important;
-}
-
-[data-testid="stSidebar"] hr {
-  border-color: rgba(201,168,76,0.12) !important;
-  margin: 1rem 0 !important;
-}
-
-/* ── Headings — Cinzel for heritage grandeur ─────────────────────────────── */
-h1 {
-  font-family: 'Cinzel', serif !important;
-  font-size: 2.8rem !important;
-  font-weight: 600 !important;
-  color: var(--gold) !important;
-  letter-spacing: 0.02em !important;
-  line-height: 1.15 !important;
-  margin-bottom: 0.5rem !important;
-}
-
-h2 {
-  font-family: 'Cinzel', serif !important;
-  font-size: 1.9rem !important;
-  font-weight: 500 !important;
-  color: var(--text-primary) !important;
-  letter-spacing: 0.02em !important;
-}
-
-h3 {
-  font-family: 'Philosopher', sans-serif !important;
-  font-size: 1rem !important;
-  font-weight: 700 !important;
-  color: var(--saffron-light) !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
-}
-
-p, .stMarkdown p {
-  font-family: 'DM Sans', sans-serif !important;
-  color: var(--text-secondary) !important;
-  line-height: 1.75 !important;
-  font-size: 0.95rem !important;
-}
-
-/* ── Alerts ──────────────────────────────────────────────────────────────── */
-.stAlert {
-  border-radius: var(--radius) !important;
-  border: 1px solid !important;
-  backdrop-filter: blur(12px) !important;
-}
-
-div[class*="stInfo"] {
-  background: rgba(75, 155, 142, 0.08) !important;
-  border-color: rgba(75, 155, 142, 0.3) !important;
-  color: #7ECDC0 !important;
-}
-
-div[class*="stSuccess"] {
-  background: rgba(75, 142, 110, 0.08) !important;
-  border-color: rgba(75, 142, 110, 0.3) !important;
-  color: #7ECDA0 !important;
-}
-
-div[class*="stWarning"] {
-  background: rgba(212, 137, 63, 0.1) !important;
-  border-color: rgba(212, 137, 63, 0.35) !important;
-  color: var(--saffron-light) !important;
-}
-
-div[class*="stError"] {
-  background: rgba(196, 75, 75, 0.08) !important;
-  border-color: rgba(196, 75, 75, 0.3) !important;
-  color: #E08080 !important;
-}
-
-/* ── Buttons — Saffron & Gold ────────────────────────────────────────────── */
-.stButton > button {
-  background: linear-gradient(135deg, var(--saffron) 0%, var(--gold) 50%, var(--saffron) 100%) !important;
-  background-size: 200% 100% !important;
-  color: #0A0A0F !important;
-  border: none !important;
-  border-radius: 10px !important;
-  font-family: 'Philosopher', sans-serif !important;
-  font-weight: 700 !important;
-  font-size: 0.88rem !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
-  padding: 0.65rem 1.5rem !important;
-  transition: all 0.35s ease !important;
-  box-shadow: 0 4px 24px rgba(212, 137, 63, 0.3) !important;
-}
-
-.stButton > button:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 35px rgba(212, 137, 63, 0.45) !important;
-  background-position: 100% 0 !important;
-}
-
-.stButton > button:active { transform: translateY(0px) !important; }
-
-.stFormSubmitButton > button {
-  background: linear-gradient(135deg, var(--accent-teal) 0%, #2D6B61 100%) !important;
-  color: white !important;
-  border: none !important;
-  border-radius: 10px !important;
-  font-family: 'Philosopher', sans-serif !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.06em !important;
-  text-transform: uppercase !important;
-  font-size: 0.88rem !important;
-  padding: 0.65rem 1.5rem !important;
-  transition: all 0.3s ease !important;
-  box-shadow: 0 4px 20px rgba(75, 155, 142, 0.25) !important;
-}
-
-.stFormSubmitButton > button:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 30px rgba(75, 155, 142, 0.4) !important;
-}
-
-/* ── File Uploader ───────────────────────────────────────────────────────── */
-[data-testid="stFileUploader"] {
-  background: var(--bg-card) !important;
-  border: 2px dashed var(--border-strong) !important;
-  border-radius: var(--radius-lg) !important;
-  padding: 1.5rem !important;
-  transition: all 0.3s ease !important;
-}
-
-[data-testid="stFileUploader"]:hover {
-  border-color: var(--saffron) !important;
-  background: var(--saffron-dim) !important;
-}
-
-[data-testid="stFileUploader"] label {
-  color: var(--text-secondary) !important;
-  font-family: 'DM Sans', sans-serif !important;
-}
-
-/* ── Metrics — with warm glow ────────────────────────────────────────────── */
-[data-testid="stMetric"] {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius) !important;
-  padding: 1.2rem 1.5rem !important;
-  transition: all 0.3s ease !important;
-  backdrop-filter: blur(10px) !important;
-}
-
-[data-testid="stMetric"]:hover {
-  border-color: var(--saffron) !important;
-  background: var(--bg-card-hover) !important;
-  transform: translateY(-3px) !important;
-  box-shadow: 0 10px 35px rgba(212, 137, 63, 0.12) !important;
-}
-
-[data-testid="stMetricLabel"] {
-  color: var(--text-muted) !important;
-  font-size: 0.72rem !important;
-  letter-spacing: 0.1em !important;
-  text-transform: uppercase !important;
-  font-weight: 500 !important;
-}
-
-[data-testid="stMetricValue"] {
-  font-family: 'Cinzel', serif !important;
-  font-size: 1.8rem !important;
-  color: var(--gold) !important;
-  font-weight: 600 !important;
-}
-
-[data-testid="stMetricDelta"] {
-  color: var(--text-muted) !important;
-  font-size: 0.78rem !important;
-}
-
-/* ── Tabs — temple arch style ────────────────────────────────────────────── */
-.stTabs [data-baseweb="tab-list"] {
-  background: var(--bg-card) !important;
-  border-radius: 12px !important;
-  padding: 4px !important;
-  gap: 4px !important;
-  border: 1px solid var(--border) !important;
-}
-
-.stTabs [data-baseweb="tab"] {
-  background: transparent !important;
-  color: var(--text-muted) !important;
-  border-radius: 10px !important;
-  font-family: 'Philosopher', sans-serif !important;
-  font-size: 0.85rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.03em !important;
-  border: none !important;
-  padding: 0.5rem 1rem !important;
-  transition: all 0.3s ease !important;
-}
-
-.stTabs [aria-selected="true"] {
-  background: linear-gradient(135deg, rgba(212,137,63,0.15), rgba(201,168,76,0.1)) !important;
-  color: var(--saffron-light) !important;
-  border: 1px solid rgba(212,137,63,0.3) !important;
-}
-
-.stTabs [data-baseweb="tab"]:hover { color: var(--text-primary) !important; }
-
-.stTabs [data-baseweb="tab-panel"] {
-  background: var(--bg-card) !important;
-  border-radius: 0 0 var(--radius) var(--radius) !important;
-  border: 1px solid var(--border) !important;
-  border-top: none !important;
-  padding: 1.5rem !important;
-  animation: fadeSlideUp 0.4s ease forwards;
-}
-
-@keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ── Chat ────────────────────────────────────────────────────────────────── */
-[data-testid="stChatMessage"] {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius) !important;
-  padding: 1rem 1.2rem !important;
-  margin: 0.5rem 0 !important;
-}
-
-.stChatInput textarea {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius) !important;
-  color: var(--text-primary) !important;
-  font-family: 'DM Sans', sans-serif !important;
-}
-
-.stChatInput textarea:focus {
-  border-color: var(--saffron) !important;
-  box-shadow: 0 0 0 2px var(--saffron-dim) !important;
-}
-
-/* ── Radio, Progress ─────────────────────────────────────────────────────── */
-.stRadio div[role="radiogroup"] label {
-  color: var(--text-primary) !important;
-  font-family: 'DM Sans', sans-serif !important;
-  font-size: 0.92rem !important;
-}
-
-.stProgress > div > div {
-  background: linear-gradient(90deg, var(--saffron) 0%, var(--gold-light) 50%, var(--saffron-light) 100%) !important;
-  border-radius: 999px !important;
-}
-
-.stProgress > div {
-  background: var(--bg-card) !important;
-  border-radius: 999px !important;
-  border: 1px solid var(--border) !important;
-}
-
-/* ── Expander ────────────────────────────────────────────────────────────── */
-.streamlit-expanderHeader {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius) !important;
-  color: var(--text-primary) !important;
-  font-family: 'Philosopher', sans-serif !important;
-  font-weight: 700 !important;
-  transition: all 0.3s ease !important;
-}
-
-.streamlit-expanderHeader:hover {
-  border-color: var(--saffron) !important;
-  color: var(--saffron-light) !important;
-}
-
-.streamlit-expanderContent {
-  background: var(--bg-secondary) !important;
-  border: 1px solid var(--border) !important;
-  border-top: none !important;
-  border-radius: 0 0 var(--radius) var(--radius) !important;
-}
-
-/* ── Misc ────────────────────────────────────────────────────────────────── */
-hr {
-  border-color: var(--border) !important;
-  margin: 2rem 0 !important;
-}
-
-[data-testid="stImage"] img {
-  border-radius: var(--radius-lg) !important;
-  border: 1px solid rgba(201,168,76,0.25) !important;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(212,137,63,0.06) !important;
-}
-
-.stSpinner > div { border-top-color: var(--saffron) !important; }
-
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg-primary); }
-::-webkit-scrollbar-thumb { background: rgba(212,137,63,0.4); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: var(--saffron); }
-
-.stCaption, [data-testid="stCaptionContainer"] {
-  color: var(--text-muted) !important;
-  font-family: 'DM Mono', monospace !important;
-  font-size: 0.75rem !important;
-  letter-spacing: 0.04em !important;
-}
-
-footer { visibility: hidden !important; }
-#MainMenu { visibility: hidden !important; }
-header[data-testid="stHeader"] {
-  background: rgba(15, 11, 30, 0.9) !important;
-  backdrop-filter: blur(20px) !important;
-  border-bottom: 1px solid rgba(201,168,76,0.12) !important;
-}
-
-/* ── Heritage card with decorative corner ────────────────────────────────── */
-.heritage-card {
-  background: linear-gradient(145deg, rgba(28,22,56,0.9), rgba(22,18,48,0.85));
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.8rem;
-  transition: all 0.35s ease;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-  backdrop-filter: blur(10px);
-}
-
-.heritage-card::before {
-  content: '❖';
-  position: absolute;
-  top: 10px; right: 14px;
-  font-size: 1.1rem;
-  color: rgba(212,137,63,0.2);
-  transition: color 0.3s ease;
-}
-
-.heritage-card:hover {
-  border-color: var(--saffron);
-  transform: translateY(-5px);
-  box-shadow: 0 15px 45px rgba(212, 137, 63, 0.12), 0 0 20px rgba(201,168,76,0.05);
-}
-
-.heritage-card:hover::before {
-  color: rgba(212,137,63,0.5);
-}
-
-/* ── Cultural quote banner ───────────────────────────────────────────────── */
-.culture-banner {
-  background: linear-gradient(135deg, rgba(212,137,63,0.08), rgba(122,46,59,0.08), rgba(27,16,64,0.3));
-  border: 1px solid rgba(212,137,63,0.2);
-  border-radius: 16px;
-  padding: 1.8rem 2.2rem;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-  margin: 1rem 0;
-}
-
-.culture-banner::before,
-.culture-banner::after {
-  content: '✦';
-  position: absolute;
-  color: rgba(201,168,76,0.15);
-  font-size: 3rem;
-}
-.culture-banner::before { top: -5px; left: 15px; }
-.culture-banner::after { bottom: -5px; right: 15px; }
-
-/* ── Ornamental divider ──────────────────────────────────────────────────── */
-.ornament-divider {
-  text-align: center;
-  margin: 2rem 0;
-  color: rgba(201,168,76,0.3);
-  font-size: 1rem;
-  letter-spacing: 0.5em;
-}
-
-/* ── Value pill ──────────────────────────────────────────────────────────── */
-.value-pill {
-  display: inline-block;
-  background: rgba(212,137,63,0.1);
-  border: 1px solid rgba(212,137,63,0.25);
-  border-radius: 999px;
-  padding: 0.3rem 1rem;
-  font-size: 0.78rem;
-  color: var(--saffron-light);
-  font-family: 'Philosopher', sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  margin: 0.2rem;
-}
-
-/* Mobile responsive */
-@media (max-width: 768px) {
-  .main .block-container {
-    padding: 1rem 1rem 3rem 1rem !important;
-  }
-  h1 { font-size: 2rem !important; }
-  h2 { font-size: 1.4rem !important; }
-  [data-testid="stMetricValue"] { font-size: 1.4rem !important; }
-}
-
+.stApp { background: linear-gradient(170deg,#0F0B1E 0%,#1B1040 30%,#1A0E30 60%,#120E24 100%) !important; font-family:'DM Sans',sans-serif !important; color:var(--text-primary) !important; }
+.stApp::before { content:''; position:fixed; top:-20%; right:-15%; width:900px; height:900px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Ccircle cx='100' cy='100' r='90' fill='none' stroke='%23C9A84C' stroke-width='0.3' opacity='0.08'/%3E%3Ccircle cx='100' cy='100' r='70' fill='none' stroke='%23C9A84C' stroke-width='0.3' opacity='0.06'/%3E%3C/svg%3E"); background-size:contain; background-repeat:no-repeat; pointer-events:none; z-index:0; animation:floatMandala 60s ease-in-out infinite; }
+@keyframes floatMandala { 0%,100%{transform:rotate(0deg) scale(1)} 50%{transform:rotate(15deg) scale(1.05)} }
+.main .block-container { padding:2rem 3rem 4rem 3rem !important; max-width:1200px !important; }
+[data-testid="stSidebar"] { background:linear-gradient(180deg,#0D0820 0%,#130E28 50%,#0D0820 100%) !important; border-right:1px solid rgba(201,168,76,0.15) !important; }
+[data-testid="stSidebar"]::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,transparent,var(--saffron),var(--gold),var(--saffron),transparent); }
+[data-testid="stSidebar"] > div { padding:2rem 1.2rem !important; }
+[data-testid="stSidebar"] h1,[data-testid="stSidebar"] h2,[data-testid="stSidebar"] h3 { font-family:'Cinzel',serif !important; color:var(--gold) !important; }
+h1 { font-family:'Cinzel',serif !important; font-size:2.8rem !important; font-weight:600 !important; color:var(--gold) !important; }
+h2 { font-family:'Cinzel',serif !important; font-size:1.9rem !important; color:var(--text-primary) !important; }
+h3 { font-family:'Philosopher',sans-serif !important; font-size:1rem !important; font-weight:700 !important; color:var(--saffron-light) !important; text-transform:uppercase !important; }
+p,.stMarkdown p { font-family:'DM Sans',sans-serif !important; color:var(--text-secondary) !important; line-height:1.75 !important; }
+.stButton > button { background:linear-gradient(135deg,var(--saffron) 0%,var(--gold) 50%,var(--saffron) 100%) !important; color:#0A0A0F !important; border:none !important; border-radius:10px !important; font-family:'Philosopher',sans-serif !important; font-weight:700 !important; letter-spacing:0.08em !important; text-transform:uppercase !important; padding:0.65rem 1.5rem !important; transition:all 0.35s ease !important; box-shadow:0 4px 24px rgba(212,137,63,0.3) !important; }
+.stButton > button:hover { transform:translateY(-2px) !important; box-shadow:0 8px 35px rgba(212,137,63,0.45) !important; }
+.stFormSubmitButton > button { background:linear-gradient(135deg,var(--accent-teal) 0%,#2D6B61 100%) !important; color:white !important; border:none !important; border-radius:10px !important; font-family:'Philosopher',sans-serif !important; font-weight:700 !important; text-transform:uppercase !important; }
+[data-testid="stFileUploader"] { background:var(--bg-card) !important; border:2px dashed var(--border-strong) !important; border-radius:var(--radius-lg) !important; }
+[data-testid="stMetric"] { background:var(--bg-card) !important; border:1px solid var(--border) !important; border-radius:var(--radius) !important; padding:1.2rem 1.5rem !important; }
+[data-testid="stMetricValue"] { font-family:'Cinzel',serif !important; font-size:1.8rem !important; color:var(--gold) !important; }
+.stTabs [data-baseweb="tab-list"] { background:var(--bg-card) !important; border-radius:12px !important; border:1px solid var(--border) !important; }
+.stTabs [data-baseweb="tab"] { color:var(--text-muted) !important; font-family:'Philosopher',sans-serif !important; font-weight:700 !important; }
+.stTabs [aria-selected="true"] { background:linear-gradient(135deg,rgba(212,137,63,0.15),rgba(201,168,76,0.1)) !important; color:var(--saffron-light) !important; border:1px solid rgba(212,137,63,0.3) !important; }
+.stTabs [data-baseweb="tab-panel"] { background:var(--bg-card) !important; border:1px solid var(--border) !important; border-top:none !important; padding:1.5rem !important; }
+[data-testid="stChatMessage"] { background:var(--bg-card) !important; border:1px solid var(--border) !important; border-radius:var(--radius) !important; }
+.stProgress > div > div { background:linear-gradient(90deg,var(--saffron) 0%,var(--gold-light) 50%,var(--saffron-light) 100%) !important; border-radius:999px !important; }
+[data-testid="stImage"] img { border-radius:var(--radius-lg) !important; border:1px solid rgba(201,168,76,0.25) !important; }
+.heritage-card { background:linear-gradient(145deg,rgba(28,22,56,0.9),rgba(22,18,48,0.85)); border:1px solid var(--border); border-radius:var(--radius); padding:1.8rem; transition:all 0.35s ease; height:100%; position:relative; overflow:hidden; }
+.heritage-card:hover { border-color:var(--saffron); transform:translateY(-5px); box-shadow:0 15px 45px rgba(212,137,63,0.12); }
+.culture-banner { background:linear-gradient(135deg,rgba(212,137,63,0.08),rgba(122,46,59,0.08),rgba(27,16,64,0.3)); border:1px solid rgba(212,137,63,0.2); border-radius:16px; padding:1.8rem 2.2rem; text-align:center; position:relative; }
+.ornament-divider { text-align:center; margin:2rem 0; color:rgba(201,168,76,0.3); font-size:1rem; letter-spacing:0.5em; }
+.value-pill { display:inline-block; background:rgba(212,137,63,0.1); border:1px solid rgba(212,137,63,0.25); border-radius:999px; padding:0.3rem 1rem; font-size:0.78rem; color:var(--saffron-light); font-family:'Philosopher',sans-serif; font-weight:700; margin:0.2rem; }
+footer{visibility:hidden !important} #MainMenu{visibility:hidden !important}
 </style>
 """, unsafe_allow_html=True)
 
-# -----------------------------------------------------------------------------
-# Demo mode — always ON
-# -----------------------------------------------------------------------------
 demo_mode = True
 
-# -----------------------------------------------------------------------------
-# Sidebar navigation
-# -----------------------------------------------------------------------------
+# =============================================================================
+# USER TYPE SELECTION — shown on very first visit
+# =============================================================================
+if not st.session_state.get("user_type_selected", False):
+    st.markdown("""
+<div style="text-align:center; padding:2rem 0 1rem 0;">
+  <div style="font-size:3rem; margin-bottom:1rem;">🕉️</div>
+  <div style="font-family:'Cinzel',serif; font-size:2.2rem; color:#C9A84C; font-weight:600;">Welcome to Sanskriti AI</div>
+  <div style="color:#C4A882; font-size:1rem; margin-top:0.5rem; font-family:'Philosopher',sans-serif;">Tell us who you are so we can personalise your experience</div>
+  <div style="color:rgba(201,168,76,0.3); margin-top:1rem; letter-spacing:0.4em; font-size:1.1rem;">❖ ─── ✦ ─── ❖</div>
+</div>
+""", unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2, gap="large")
+    for col, utype_key in zip([col1, col2], ["student", "tourist"]):
+        cfg = USER_TYPES[utype_key]
+        with col:
+            focus_html = "".join([f'<div style="color:#A89878;font-size:0.82rem;padding:3px 0;">✦ {f}</div>' for f in cfg["content_focus"]])
+            st.markdown(f"""
+<div style="background:{cfg['bg']};border:2px solid {cfg['border']};border-radius:20px;padding:2.2rem 1.8rem;text-align:center;min-height:340px;">
+  <div style="font-size:3.5rem;margin-bottom:1rem;">{cfg['icon']}</div>
+  <div style="font-family:'Cinzel',serif;font-size:1.3rem;color:#E8C97A;font-weight:600;margin-bottom:0.5rem;">{cfg['label']}</div>
+  <div style="color:#C4A882;font-size:0.9rem;margin-bottom:1.5rem;font-style:italic;">{cfg['subtitle']}</div>
+  <div style="text-align:left;margin-bottom:1rem;">{focus_html}</div>
+  <div style="color:#7A6E5C;font-size:0.75rem;margin-top:0.8rem;">⏱️ {cfg['recommended_duration']}</div>
+</div>
+""", unsafe_allow_html=True)
+            st.markdown("")
+            if st.button(f"Continue as {cfg['label']}", key=f"select_{utype_key}", use_container_width=True):
+                st.session_state["user_type"] = utype_key
+                st.session_state["user_type_selected"] = True
+                st.toast(f"Welcome! {cfg['label']} mode activated 🎉", icon="✨")
+                st.rerun()
+
+    st.markdown("")
+    c1, c2, c3 = st.columns([1,2,1])
+    with c2:
+        if st.button("⟶ Skip for now (continue as Tourist)", use_container_width=True, key="skip_type"):
+            st.session_state["user_type"] = "tourist"
+            st.session_state["user_type_selected"] = True
+            st.rerun()
+    st.stop()
+
+
+# =============================================================================
+# SIDEBAR
+# =============================================================================
 with st.sidebar:
-    # ── Language toggle ─────────────────────────────────────────────────────
     def _toggle_lang():
         st.session_state["lang"] = "hi" if st.session_state["lang"] == "en" else "en"
 
@@ -884,413 +489,204 @@ with st.sidebar:
     st.markdown("")
 
     st.markdown(f"""
-<div style="padding: 0.5rem 0 1.5rem 0; text-align:center;">
-  <div style="font-size:1.8rem; margin-bottom:0.3rem;">🕉️</div>
-  <div style="font-family:'Cinzel',serif; font-size:1.5rem; font-weight:600; color:#D4893F; letter-spacing:0.06em;">
-    {T("sidebar_title")}
-  </div>
-  <div style="font-family:'Philosopher',sans-serif; font-size:0.68rem; color:#8A7560; letter-spacing:0.15em; text-transform:uppercase; margin-top:4px; font-weight:700;">
-    {T("sidebar_subtitle")}
-  </div>
-  <div style="margin-top:0.7rem; color:rgba(201,168,76,0.25); font-size:0.7rem; letter-spacing:0.4em;">✦ ── ✦</div>
+<div style="padding:0.5rem 0 1rem 0;text-align:center;">
+  <div style="font-size:1.8rem;margin-bottom:0.3rem;">🕉️</div>
+  <div style="font-family:'Cinzel',serif;font-size:1.5rem;font-weight:600;color:#D4893F;letter-spacing:0.06em;">{T("sidebar_title")}</div>
+  <div style="font-family:'Philosopher',sans-serif;font-size:0.68rem;color:#8A7560;letter-spacing:0.15em;text-transform:uppercase;margin-top:4px;font-weight:700;">{T("sidebar_subtitle")}</div>
+  <div style="margin-top:0.7rem;color:rgba(201,168,76,0.25);font-size:0.7rem;letter-spacing:0.4em;">✦ ── ✦</div>
 </div>
 """, unsafe_allow_html=True)
+
+    # ── User type switcher (NEW) ─────────────────────────────────────────────
+    utype = get_user_type()
+    ucfg = get_user_config()
+    st.markdown("**👤 Explorer Mode**")
+    st.markdown(f"""
+<div style="background:{ucfg['bg']};border:1px solid {ucfg['border']};border-radius:999px;padding:0.3rem 0.9rem;
+display:inline-block;font-size:0.75rem;color:{ucfg['color']};font-family:'Philosopher',sans-serif;font-weight:700;
+letter-spacing:0.06em;margin-bottom:0.5rem;">{ucfg['label']} Mode</div>
+""", unsafe_allow_html=True)
+    other_type = "tourist" if utype == "student" else "student"
+    other_cfg = USER_TYPES[other_type]
+    if st.button(f"Switch to {other_cfg['label']}", key="switch_user_type", use_container_width=True):
+        st.session_state["user_type"] = other_type
+        st.toast(f"Switched to {other_cfg['label']} mode!", icon="🔄")
+        st.rerun()
+
     st.markdown("---")
 
-    # Build page options from translations (language-aware labels)
     page_options = [T(pk) for pk in PAGE_KEYS]
-    current_pid  = st.session_state.get("page_id", "home")
-    try:
-        default_index = PAGE_IDS.index(current_pid)
-    except ValueError:
-        default_index = 0
+    current_pid = st.session_state.get("page_id", "home")
+    try: default_index = PAGE_IDS.index(current_pid)
+    except ValueError: default_index = 0
 
-    selected_label = st.radio(
-        "Navigate",
-        options=page_options,
-        index=default_index,
-        key="nav_radio",
-        label_visibility="collapsed",
-    )
-    # Map selected label back to page_id
-    try:
-        sel_idx = page_options.index(selected_label)
-    except ValueError:
-        sel_idx = 0
-    st.session_state["page_id"] = PAGE_IDS[sel_idx]
+    def _on_nav_change():
+        label = st.session_state.get("nav_radio", page_options[0])
+        try: idx = page_options.index(label)
+        except ValueError: idx = 0
+        st.session_state["page_id"] = PAGE_IDS[idx]
+
+    st.radio("Navigate", options=page_options, index=default_index, key="nav_radio", label_visibility="collapsed", on_change=_on_nav_change)
 
     st.markdown("---")
 
-    # ── XP & Level display ──────────────────────────────────────────────────
-    xp    = st.session_state["xp"]
+    xp = st.session_state["xp"]
     level = get_level(xp)
     next_xp = get_next_level_xp(xp)
     st.markdown(f"### {T('explorer_progress')}")
     st.markdown(f"**{level}**")
     st.markdown(f"⚡ **{xp} XP**")
     if next_xp:
-        progress_val = min(xp / next_xp, 1.0)
-        st.progress(progress_val)
+        st.progress(min(xp / next_xp, 1.0))
         st.caption(f"{xp} / {next_xp} {T('xp_to_next')}")
     else:
-        st.progress(1.0)
-        st.caption(T("max_level"))
+        st.progress(1.0); st.caption(T("max_level"))
 
-    # ── Achievement badges in sidebar ────────────────────────────────────────
     earned = st.session_state["achievements"]
     st.markdown(f"**{T('badges')}**")
+    SIDEBAR_HINTS = {"first_visit":"Visit any monument","quiz_master":"Complete 2 quizzes","heritage_champion":"Earn 150+ XP"}
     for key, (icon, name, desc) in BADGES.items():
         if key in earned:
-            st.markdown(
-                f"""<div style="background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.5);
-                border-radius:8px;padding:0.5rem 0.7rem;margin:4px 0;display:flex;align-items:center;gap:0.5rem;">
-                <span style="font-size:1.2rem;">{icon}</span>
-                <div><div style="color:#E8C97A;font-size:0.82rem;font-weight:600;">{name}</div>
-                <div style="color:#7A6E5C;font-size:0.7rem;">{desc}</div></div></div>""",
-                unsafe_allow_html=True,
-            )
+            st.markdown(f"""<div style="background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.5);border-radius:8px;padding:0.5rem 0.7rem;margin:4px 0;display:flex;align-items:center;gap:0.5rem;">
+            <span style="font-size:1.2rem;">{icon}</span><div><div style="color:#E8C97A;font-size:0.82rem;font-weight:600;">{name}</div>
+            <div style="color:#7A6E5C;font-size:0.7rem;">{desc}</div></div></div>""", unsafe_allow_html=True)
         else:
-            SIDEBAR_UNLOCK_HINTS = {
-                "first_visit":       "Visit any monument",
-                "quiz_master":       "Complete 2 quizzes",
-                "heritage_champion": "Earn 150+ XP",
-            }
-            st.markdown(
-                f"""<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
-                border-radius:8px;padding:0.5rem 0.7rem;margin:4px 0;display:flex;align-items:center;gap:0.5rem;
-                opacity:0.45;">
-                <span style="font-size:1.2rem;">🔒</span>
-                <div><div style="color:#7A6E5C;font-size:0.82rem;font-weight:600;">{name}</div>
-                <div style="color:#5C5445;font-size:0.7rem;">{SIDEBAR_UNLOCK_HINTS.get(key,'')}</div></div></div>""",
-                unsafe_allow_html=True,
-            )
+            st.markdown(f"""<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.7rem;margin:4px 0;display:flex;align-items:center;gap:0.5rem;opacity:0.45;">
+            <span style="font-size:1.2rem;">🔒</span><div><div style="color:#7A6E5C;font-size:0.82rem;font-weight:600;">{name}</div>
+            <div style="color:#5C5445;font-size:0.7rem;">{SIDEBAR_HINTS.get(key,'')}</div></div></div>""", unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown(f"### {T('demo_flow')}")
     st.markdown("""
-1. 📸 Upload monument image  
-2. 🔍 View AI recognition  
-3. 📖 Explore history tabs  
-4. 🤖 Chat with AI guide  
-5. 🌿 Check sustainability  
-6. 🧠 Take the quiz  
+1. 📸 Upload monument image
+2. 🔍 View AI recognition
+3. ⏳ Time Travel through eras
+4. 🤖 Chat with AI guide
+5. 🌿 Check sustainability
+6. 🧠 Take the quiz
+7. 🗓️ Explore festivals
 """)
     st.divider()
     st.caption(T("footer_left"))
 
-# Resolve page_id for routing
 active_page = st.session_state.get("page_id", "home")
+BASE_DIR = Path(__file__).parent
 
-# -----------------------------------------------------------------------------
-# Home page
-# -----------------------------------------------------------------------------
+# =============================================================================
+# HOME PAGE
+# =============================================================================
 if active_page == "home":
-
-    # ── Sanskrit quote banner ─────────────────────────────────────────────────
     st.markdown("""
 <div class="culture-banner">
-  <div style="font-family:'Cinzel',serif; font-size:1.4rem; color:#E8C97A; font-weight:500; margin-bottom:0.6rem; letter-spacing:0.04em;">
-    "वसुधैव कुटुम्बकम्"
-  </div>
-  <div style="font-family:'Philosopher',sans-serif; font-size:0.85rem; color:#C4A882; font-style:italic;">
-    "The World is One Family" — Maha Upanishad
-  </div>
+  <div style="font-family:'Cinzel',serif;font-size:1.4rem;color:#E8C97A;font-weight:500;margin-bottom:0.6rem;letter-spacing:0.04em;">"वसुधैव कुटुम्बकम्"</div>
+  <div style="font-family:'Philosopher',sans-serif;font-size:0.85rem;color:#C4A882;font-style:italic;">"The World is One Family" — Maha Upanishad</div>
 </div>
 """, unsafe_allow_html=True)
-
     st.markdown("")
-
-    # ── Cinematic hero ────────────────────────────────────────────────────────
     st.markdown(f"""
-<div style="
-  position: relative;
-  width: 100%;
-  height: 440px;
-  border-radius: 22px;
-  overflow: hidden;
-  margin-bottom: 2rem;
-  border: 1px solid rgba(212,137,63,0.25);
-  box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 50px rgba(212,137,63,0.05);
-">
-  <img
-    src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Taj_Mahal%2C_Agra%2C_India_edit3.jpg/1280px-Taj_Mahal%2C_Agra%2C_India_edit3.jpg"
-    style="width:100%; height:100%; object-fit:cover; display:block;"
-  />
-  <div style="
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to right, rgba(15,11,30,0.95) 0%, rgba(15,11,30,0.6) 50%, rgba(15,11,30,0.15) 100%);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 3.5rem;
-  ">
-    <div style="
-      display: inline-block;
-      background: linear-gradient(135deg, rgba(212,137,63,0.15), rgba(201,168,76,0.1));
-      border: 1px solid rgba(212,137,63,0.4);
-      color: #D4893F;
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      padding: 0.35rem 1rem;
-      border-radius: 999px;
-      font-family: Philosopher, sans-serif;
-      margin-bottom: 1.4rem;
-      width: fit-content;
-    ">{T("hero_badge")}</div>
-    <div style="
-      font-family: Cinzel, serif;
-      font-size: 3rem;
-      color: #F5E6D3;
-      font-weight: 600;
-      line-height: 1.15;
-      margin-bottom: 1rem;
-    ">{T("hero_title_1")}<br><span style="
-      background: linear-gradient(135deg, #D4893F, #E8C97A);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    ">{T("hero_title_2")}</span></div>
-    <p style="
-      font-size: 1rem;
-      color: #C4A882;
-      max-width: 500px;
-      line-height: 1.8;
-      font-family: DM Sans, sans-serif;
-      margin: 0;
-    ">{T("hero_desc")}</p>
+<div style="position:relative;width:100%;height:440px;border-radius:22px;overflow:hidden;margin-bottom:2rem;border:1px solid rgba(212,137,63,0.25);box-shadow:0 30px 80px rgba(0,0,0,0.5);">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Taj_Mahal%2C_Agra%2C_India_edit3.jpg/1280px-Taj_Mahal%2C_Agra%2C_India_edit3.jpg" style="width:100%;height:100%;object-fit:cover;display:block;"/>
+  <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(15,11,30,0.95) 0%,rgba(15,11,30,0.6) 50%,rgba(15,11,30,0.15) 100%);display:flex;flex-direction:column;justify-content:center;padding:3.5rem;">
+    <div style="display:inline-block;background:linear-gradient(135deg,rgba(212,137,63,0.15),rgba(201,168,76,0.1));border:1px solid rgba(212,137,63,0.4);color:#D4893F;font-size:0.7rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;padding:0.35rem 1rem;border-radius:999px;font-family:Philosopher,sans-serif;margin-bottom:1.4rem;width:fit-content;">{T("hero_badge")}</div>
+    <div style="font-family:Cinzel,serif;font-size:3rem;color:#F5E6D3;font-weight:600;line-height:1.15;margin-bottom:1rem;">{T("hero_title_1")}<br><span style="background:linear-gradient(135deg,#D4893F,#E8C97A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">{T("hero_title_2")}</span></div>
+    <p style="font-size:1rem;color:#C4A882;max-width:500px;line-height:1.8;font-family:DM Sans,sans-serif;margin:0;">{T("hero_desc")}</p>
   </div>
 </div>
 """, unsafe_allow_html=True)
 
-    # ── Core values of Indian heritage ────────────────────────────────────────
-    st.markdown("""
-<div style="text-align:center; margin: 1rem 0 1.5rem 0;">
-  <span class="value-pill">🙏 अहिंसा · Non-Violence</span>
-  <span class="value-pill">🕉️ धर्म · Dharma</span>
-  <span class="value-pill">📖 ज्ञान · Knowledge</span>
-  <span class="value-pill">🤝 सेवा · Service</span>
-  <span class="value-pill">🌿 प्रकृति · Nature</span>
-</div>
-""", unsafe_allow_html=True)
-
-    # ── Ornamental divider ────────────────────────────────────────────────────
+    st.markdown("""<div style="text-align:center;margin:1rem 0 1.5rem 0;">
+  <span class="value-pill">🙏 अहिंसा · Non-Violence</span><span class="value-pill">🕉️ धर्म · Dharma</span>
+  <span class="value-pill">📖 ज्ञान · Knowledge</span><span class="value-pill">🤝 सेवा · Service</span><span class="value-pill">🌿 प्रकृति · Nature</span>
+</div>""", unsafe_allow_html=True)
     st.markdown('<div class="ornament-divider">❖ ─── ✦ ─── ❖</div>', unsafe_allow_html=True)
 
-    # Metrics
-    st.markdown("")
     m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        st.metric(f"🏛️ {T('monuments_covered')}", "8+", "Ancient to Modern")
-    with m2:
-        st.metric(f"🔮 {T('ai_powered')}", "Vision AI", "Gemini Powered")
-    with m3:
-        st.metric(f"🌍 {T('sdg_aligned')}", "SDG 11 & 17", "Sustainable Future")
-    with m4:
-        st.metric(f"⚡ {T('response_time')}", "< 2 sec", "Real-time AI")
-
+    with m1: st.metric(f"🏛️ {T('monuments_covered')}", "8+", "Ancient to Modern")
+    with m2: st.metric(f"🔮 {T('ai_powered')}", "Vision AI", "Gemini Powered")
+    with m3: st.metric(f"🌍 {T('sdg_aligned')}", "SDG 11 & 17", "Sustainable Future")
+    with m4: st.metric(f"⚡ {T('response_time')}", "< 2 sec", "Real-time AI")
     st.markdown("")
 
-    # Feature cards — with cultural icons
     f1, f2, f3 = st.columns(3)
     with f1:
-        st.markdown(
-            f'<div class="heritage-card">'
-            f'<div style="font-size:2.2rem;margin-bottom:0.8rem;">🪔</div>'
-            f'<strong style="font-family:Cinzel,serif;color:#E8A85C;font-size:1.05rem;">{T("smart_recognition")}</strong>'
-            f'<br><br><span style="color:#C4A882;">{T("smart_recognition_d")}</span></div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown(f'<div class="heritage-card"><div style="font-size:2.2rem;margin-bottom:0.8rem;">🪔</div><strong style="font-family:Cinzel,serif;color:#E8A85C;font-size:1.05rem;">{T("smart_recognition")}</strong><br><br><span style="color:#C4A882;">{T("smart_recognition_d")}</span></div>', unsafe_allow_html=True)
+        if st.button("🔍 Go to Recognition", key="home_btn_recognition", use_container_width=True):
+            st.session_state["page_id"] = "recognition"; st.rerun()
     with f2:
-        st.markdown(
-            f'<div class="heritage-card">'
-            f'<div style="font-size:2.2rem;margin-bottom:0.8rem;">📜</div>'
-            f'<strong style="font-family:Cinzel,serif;color:#E8A85C;font-size:1.05rem;">{T("heritage_chatbot")}</strong>'
-            f'<br><br><span style="color:#C4A882;">{T("heritage_chatbot_d")}</span></div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown(f'<div class="heritage-card"><div style="font-size:2.2rem;margin-bottom:0.8rem;">📜</div><strong style="font-family:Cinzel,serif;color:#E8A85C;font-size:1.05rem;">{T("heritage_chatbot")}</strong><br><br><span style="color:#C4A882;">{T("heritage_chatbot_d")}</span></div>', unsafe_allow_html=True)
+        if st.button("🤖 Go to Chatbot", key="home_btn_chatbot", use_container_width=True):
+            st.session_state["page_id"] = "chatbot"; st.rerun()
     with f3:
-        st.markdown(
-            f'<div class="heritage-card">'
-            f'<div style="font-size:2.2rem;margin-bottom:0.8rem;">🌿</div>'
-            f'<strong style="font-family:Cinzel,serif;color:#E8A85C;font-size:1.05rem;">{T("sustainability_guide")}</strong>'
-            f'<br><br><span style="color:#C4A882;">{T("sustainability_guide_d")}</span></div>',
-            unsafe_allow_html=True,
-        )
-
+        st.markdown(f'<div class="heritage-card"><div style="font-size:2.2rem;margin-bottom:0.8rem;">⏳</div><strong style="font-family:Cinzel,serif;color:#E8A85C;font-size:1.05rem;">⏳ Time Travel Mode</strong><br><br><span style="color:#C4A882;">See monuments across 4 historical eras — construction to modern day</span></div>', unsafe_allow_html=True)
+        if st.button("⏳ Try Time Travel", key="home_btn_timetravel", use_container_width=True):
+            st.session_state["page_id"] = "recognition"; st.rerun()
     st.markdown("")
-    st.markdown(
-        f'<div class="heritage-card">'
-        f'<div style="font-size:2.2rem;margin-bottom:0.8rem;">🧠</div>'
-        f'<strong style="font-family:Cinzel,serif;color:#E8A85C;font-size:1.05rem;">{T("knowledge_quiz")}</strong>'
-        f'<br><br><span style="color:#C4A882;">{T("knowledge_quiz_d")}</span></div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown("")
+    f4, f5 = st.columns(2)
+    with f4:
+        st.markdown(f'<div class="heritage-card"><div style="font-size:2.2rem;margin-bottom:0.8rem;">🧠</div><strong style="font-family:Cinzel,serif;color:#E8A85C;font-size:1.05rem;">{T("knowledge_quiz")}</strong><br><br><span style="color:#C4A882;">{T("knowledge_quiz_d")}</span></div>', unsafe_allow_html=True)
+        if st.button("🧠 Go to Quiz", key="home_btn_quiz", use_container_width=True):
+            st.session_state["page_id"] = "quiz"; st.rerun()
+    with f5:
+        st.markdown(f'<div class="heritage-card"><div style="font-size:2.2rem;margin-bottom:0.8rem;">🗓️</div><strong style="font-family:Cinzel,serif;color:#E8A85C;font-size:1.05rem;">🗓️ Festival Calendar</strong><br><br><span style="color:#C4A882;">Discover 30+ cultural festivals at India\'s heritage monuments</span></div>', unsafe_allow_html=True)
+        if st.button("🗓️ Go to Festivals", key="home_btn_festival", use_container_width=True):
+            st.session_state["page_id"] = "festival"; st.rerun()
 
-    # ── Ornamental divider ────────────────────────────────────────────────────
     st.markdown('<div class="ornament-divider">✦ ─── ❖ ─── ✦</div>', unsafe_allow_html=True)
-
-    # ── Cultural Heritage Section ─────────────────────────────────────────────
-    st.markdown("""
-<div style="
-  background: linear-gradient(135deg, rgba(122,46,59,0.08), rgba(212,137,63,0.06), rgba(27,16,64,0.15));
-  border: 1px solid rgba(212,137,63,0.15);
-  border-radius: 18px;
-  padding: 2rem 2.5rem;
-  margin: 1rem 0 2rem 0;
-">
-  <div style="font-family:'Cinzel',serif; font-size:1.3rem; color:#E8A85C; font-weight:500; margin-bottom:1rem;">
-    🕉️ Our Heritage, Our Pride
-  </div>
-  <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1.5rem;">
-    <div style="text-align:center;">
-      <div style="font-size:2rem; margin-bottom:0.5rem;">🏛️</div>
-      <div style="font-family:'Philosopher',sans-serif; font-weight:700; color:#E8C97A; font-size:0.9rem;">5000+ Years</div>
-      <div style="color:#8A7560; font-size:0.8rem; margin-top:0.3rem;">Of continuous civilization</div>
-    </div>
-    <div style="text-align:center;">
-      <div style="font-size:2rem; margin-bottom:0.5rem;">📖</div>
-      <div style="font-family:'Philosopher',sans-serif; font-weight:700; color:#E8C97A; font-size:0.9rem;">40 UNESCO Sites</div>
-      <div style="color:#8A7560; font-size:0.8rem; margin-top:0.3rem;">World Heritage landmarks</div>
-    </div>
-    <div style="text-align:center;">
-      <div style="font-size:2rem; margin-bottom:0.5rem;">🙏</div>
-      <div style="font-family:'Philosopher',sans-serif; font-weight:700; color:#E8C97A; font-size:0.9rem;">Unity in Diversity</div>
-      <div style="color:#8A7560; font-size:0.8rem; margin-top:0.3rem;">Countless traditions & languages</div>
-    </div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
     with st.expander(T("how_to_use")):
         st.markdown("""
-**Step 1:** Go to Monument Recognition and upload a monument photo
-
-**Step 2:** View detailed history, architecture, and facts
-
-**Step 3:** Chat with AI Heritage Chatbot about the monument
-
-**Step 4:** Get Sustainability tips and take the Knowledge Quiz
+**Step 1:** Select your profile (Student or Tourist) on first launch\n
+**Step 2:** Go to Monument Recognition — upload a photo or select from dropdown\n
+**Step 3:** Explore history tabs, then slide through **Time Travel Mode**\n
+**Step 4:** Chat with the AI Heritage Chatbot (personalised to your mode)\n
+**Step 5:** Get Sustainability tips, take the Quiz, and check the Festival Calendar
 """)
+    st.markdown("""<div class="culture-banner" style="margin-top:2rem;">
+  <div style="font-family:'Cinzel',serif;font-size:1.2rem;color:#E8C97A;font-weight:500;margin-bottom:0.5rem;">"तमसो मा ज्योतिर्गमय"</div>
+  <div style="font-family:'Philosopher',sans-serif;font-size:0.82rem;color:#C4A882;font-style:italic;">"Lead me from darkness to light" — Brihadaranyaka Upanishad</div>
+</div>""", unsafe_allow_html=True)
 
-    st.markdown('<div class="ornament-divider">❖ ─── ✦ ─── ❖</div>', unsafe_allow_html=True)
 
-    a1, a2, a3 = st.columns(3)
-    with a1:
-        st.markdown(f"**{T('tech_stack')}**")
-        st.caption("Python + Streamlit")
-        st.caption("Google Gemini Vision AI")
-        st.caption("Pillow + JSON")
-    with a2:
-        st.markdown(f"**{T('problem_solved')}**")
-        st.caption("Lack of accessible heritage education")
-        st.caption("Promoting responsible tourism")
-        st.caption("AI-powered cultural preservation")
-    with a3:
-        st.markdown(f"**{T('impact')}**")
-        st.caption("500M+ annual heritage visitors")
-        st.caption("SDG 11 & 17 aligned")
-        st.caption("Preserving 5000 years of culture")
-
-    # ── Closing Sanskrit quote ────────────────────────────────────────────────
-    st.markdown("""
-<div class="culture-banner" style="margin-top:2rem;">
-  <div style="font-family:'Cinzel',serif; font-size:1.2rem; color:#E8C97A; font-weight:500; margin-bottom:0.5rem;">
-    "तमसो मा ज्योतिर्गमय"
-  </div>
-  <div style="font-family:'Philosopher',sans-serif; font-size:0.82rem; color:#C4A882; font-style:italic;">
-    "Lead me from darkness to light" — Brihadaranyaka Upanishad
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
-<<<<<<< HEAD
-    # ── Hidden Gems Demo ──────────────────────────────────────────────────────
-    st.markdown("---")
-    st.markdown("### 💎 Explore Hidden Gems")
-    col_lat, col_lon = st.columns(2)
-    with col_lat:
-        user_lat = st.number_input("Your Latitude", value=27.1752, format="%0.5f")
-    with col_lon:
-        user_lon = st.number_input("Your Longitude", value=78.0420, format="%0.5f")
-        
-    user_id = "demo_user"
-    if st.button("Check for Hidden Gems"):
-        unlocked = check_nearby_gems(user_lat, user_lon, user_id)
-        show_gem_unlock_ui(unlocked)
-
-=======
->>>>>>> 07dc145c19582e5525ab4c2d7040077e47ce921b
-# -----------------------------------------------------------------------------
-# Monument Recognition page
-# -----------------------------------------------------------------------------
+# =============================================================================
+# RECOGNITION PAGE
+# =============================================================================
 elif active_page == "recognition":
     st.markdown(f"## {T('monument_recognition')}")
 
-    # ── Manual monument selector (no button needed — on_change fires immediately) ──
     all_monuments = get_all_monument_names()
-    all_options   = [T("select_placeholder")] + all_monuments
+    all_options = [T("select_placeholder")] + all_monuments
 
     def _on_manual_change():
         chosen = st.session_state.get("manual_select_key", T("select_placeholder"))
-        if chosen == T("select_placeholder"):
-            return
+        if chosen == T("select_placeholder"): return
         details = get_monument_details(chosen)
-        st.session_state["monument_result"] = {
-            "monument_name": chosen,
-            "location":      details.get("location", "India") if details else "India",
-            "confidence":    "Manual Selection",
-            "brief_description": details.get("cultural_importance", f"Explore {chosen}") if details else f"Explore {chosen}",
-        }
-        st.session_state["monument_details"]  = details
-        st.session_state["uploaded_image"]    = None
+        st.session_state["monument_result"] = {"monument_name": chosen, "location": details.get("location","India") if details else "India", "confidence":"Manual Selection", "brief_description": details.get("cultural_importance", f"Explore {chosen}") if details else f"Explore {chosen}"}
+        st.session_state["monument_details"] = details
+        st.session_state["uploaded_image"] = None
         st.session_state["_last_uploaded_name"] = None
         if chosen not in st.session_state["monuments_visited"]:
             st.session_state["monuments_visited"].add(chosen)
             pts = award_xp("view_monument")
             st.toast(f"⚡ +{pts} XP for exploring {chosen}!", icon="✨")
 
-    # Resolve current index so selectbox shows active monument
     current_result = st.session_state.get("monument_result")
-    current_name   = current_result.get("monument_name") if current_result else None
+    current_name = current_result.get("monument_name") if current_result else None
     if current_name and current_result.get("confidence") == "Manual Selection" and current_name in all_options:
         sel_idx = all_options.index(current_name)
-    else:
-        sel_idx = 0
+    else: sel_idx = 0
 
-    st.selectbox(
-        T("select_monument"),
-        options=all_options,
-        index=sel_idx,
-        key="manual_select_key",
-        on_change=_on_manual_change,
-        help="Choose any monument to instantly load full historical details.",
-    )
-
+    st.selectbox(T("select_monument"), options=all_options, index=sel_idx, key="manual_select_key", on_change=_on_manual_change)
     st.markdown("---")
 
-    # ── Image upload ──────────────────────────────────────────────────────────
-    file_uploader_here = st.file_uploader(
-        T("upload_label"),
-        type=["jpg", "jpeg", "png"],
-        key="recognition_uploader",
-    )
+    file_uploader_here = st.file_uploader(T("upload_label"), type=["jpg","jpeg","png"], key="recognition_uploader")
     if file_uploader_here is not None:
-        # Only re-run recognition when a NEW file is uploaded
         if st.session_state.get("_last_uploaded_name") != file_uploader_here.name:
             st.session_state["_last_uploaded_name"] = file_uploader_here.name
-            st.session_state["uploaded_image"]      = file_uploader_here
-            image_bytes = file_uploader_here.read()
-            file_uploader_here.seek(0)
-
+            st.session_state["uploaded_image"] = file_uploader_here
+            image_bytes = file_uploader_here.read(); file_uploader_here.seek(0)
             with st.spinner(T("identifying")):
                 result = get_demo_result(image_bytes, filename=file_uploader_here.name)
-                st.session_state["monument_result"]  = result
-                st.session_state["monument_details"] = get_monument_details(result.get("monument_name", ""))
-
+                st.session_state["monument_result"] = result
+                st.session_state["monument_details"] = get_monument_details(result.get("monument_name",""))
             if result.get("monument_name") not in ("Unknown", None, ""):
                 detected_name = result["monument_name"]
                 st.toast(f"✅ Identified: {detected_name}", icon="🏛️")
@@ -1299,60 +695,43 @@ elif active_page == "recognition":
                     pts = award_xp("view_monument")
                     st.toast(f"⚡ +{pts} XP for exploring {detected_name}!", icon="✨")
             else:
-                st.warning("⚠️ Could not identify. Please rename your file to include the monument name (e.g. red_fort.jpg) or use the dropdown.")
+                st.warning("⚠️ Could not identify. Please rename your file to include the monument name or use the dropdown.")
 
-    # ── Show result (from image upload OR manual selection) ───────────────────
-    result       = st.session_state.get("monument_result")
+    result = st.session_state.get("monument_result")
     image_to_show = st.session_state.get("uploaded_image")
 
-    # Monument cover images — local files from assets/sample_images/
-    BASE_DIR = Path(__file__).parent
     MONUMENT_IMAGES = {
-        "Taj Mahal":         BASE_DIR / "assets/sample_images/taj.jpg",
-        "Red Fort":          BASE_DIR / "assets/sample_images/redfort.jpg",
-        "Qutub Minar":       BASE_DIR / "assets/sample_images/qutubminar.jpg",
-        "Hampi":             BASE_DIR / "assets/sample_images/hampi.jpg",
-        "Konark Sun Temple": BASE_DIR / "assets/sample_images/konark.jpg",
-        "Ajanta Caves":      BASE_DIR / "assets/sample_images/ajanta.jpg",
-        "Hawa Mahal":        BASE_DIR / "assets/sample_images/hawamahal.jpg",
-        "India Gate":        BASE_DIR / "assets/sample_images/indiagate.jpg",
+        "Taj Mahal": BASE_DIR/"assets/sample_images/taj.jpg",
+        "Red Fort": BASE_DIR/"assets/sample_images/redfort.jpg",
+        "Qutub Minar": BASE_DIR/"assets/sample_images/qutubminar.jpg",
+        "Hampi": BASE_DIR/"assets/sample_images/hampi.jpg",
+        "Konark Sun Temple": BASE_DIR/"assets/sample_images/konark.jpg",
+        "Ajanta Caves": BASE_DIR/"assets/sample_images/ajanta.jpg",
+        "Hawa Mahal": BASE_DIR/"assets/sample_images/hawamahal.jpg",
+        "India Gate": BASE_DIR/"assets/sample_images/indiagate.jpg",
     }
 
     if result is not None and result.get("monument_name") not in ("Unknown", None, ""):
         monument_name = result["monument_name"]
-
-        # Identification result card
         col_img, col_result = st.columns(2)
         with col_img:
             if image_to_show is not None:
-                image_to_show.seek(0)
-                st.image(image_to_show, caption=f"Uploaded: {monument_name}", use_container_width=True)
+                image_to_show.seek(0); st.image(image_to_show, caption=f"Uploaded: {monument_name}", use_container_width=True)
             elif monument_name in MONUMENT_IMAGES and MONUMENT_IMAGES[monument_name].exists():
-                st.image(
-                    str(MONUMENT_IMAGES[monument_name]),
-                    caption=monument_name,
-                    use_container_width=True,
-                )
+                st.image(str(MONUMENT_IMAGES[monument_name]), caption=monument_name, use_container_width=True)
             else:
-                st.markdown(
-                    f'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;'
-                    f'padding:3rem;text-align:center;font-size:2.5rem;">🏛️<br>'
-                    f'<span style="font-size:1rem;color:var(--text-secondary);">{monument_name}</span></div>',
-                    unsafe_allow_html=True,
-                )
+                st.markdown(f'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:3rem;text-align:center;font-size:2.5rem;">🏛️<br><span style="font-size:1rem;color:var(--text-secondary);">{monument_name}</span></div>', unsafe_allow_html=True)
         with col_result:
-            if result.get("confidence") == "Manual Selection":
-                st.info(f"{T('manually_selected')}: **{monument_name}**")
-            else:
-                st.success(T("monument_identified"))
-            st.markdown(f"**🏛️ Monument:** {result.get('monument_name', '—')}")
-            st.markdown(f"**📍 Location:** {result.get('location', '—')}")
-            st.markdown(f"**📊 Confidence:** {result.get('confidence', '—')}")
-            st.markdown(f"**📝** {result.get('brief_description', '—')}")
+            if result.get("confidence") == "Manual Selection": st.info(f"{T('manually_selected')}: **{monument_name}**")
+            else: st.success(T("monument_identified"))
+            st.markdown(f"**🏛️ Monument:** {result.get('monument_name','—')}")
+            st.markdown(f"**📍 Location:** {result.get('location','—')}")
+            st.markdown(f"**📊 Confidence:** {result.get('confidence','—')}")
+            st.markdown(f"**📝** {result.get('brief_description','—')}")
+            # User mode badge
+            ucfg = get_user_config()
+            st.markdown(f'<div style="background:{ucfg["bg"]};border:1px solid {ucfg["border"]};border-radius:8px;padding:0.4rem 0.8rem;font-size:0.78rem;color:{ucfg["color"]};margin-top:0.5rem;">Viewing in {ucfg["label"]} Mode</div>', unsafe_allow_html=True)
 
-        # render voice guide immediately beneath the monument title/card
-        render_voice_guide(monument_name)
-        # ── Detailed Information ──────────────────────────────────────────────
         monument_details = st.session_state.get("monument_details") or get_monument_details(monument_name)
         st.session_state["monument_details"] = monument_details
 
@@ -1360,346 +739,465 @@ elif active_page == "recognition":
             st.markdown("---")
             st.markdown(f"### {T('detailed_info')}")
 
-            tab1, tab2, tab3, tab4, tab5 = st.tabs(
-                [T("tab_history"), T("tab_architecture"), T("tab_facts"), T("tab_fun"), T("tab_visitor")]
-            )
+            # ── 6 tabs including Time Travel (NEW) ───────────────────────────
+            tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+                T("tab_history"), T("tab_architecture"), T("tab_facts"),
+                T("tab_fun"), T("tab_visitor"), T("tab_timetravel")
+            ])
 
             with tab1:
                 col_a, col_b = st.columns(2)
                 with col_a:
-                    st.markdown(f"**🧱 Built By:**\n\n{monument_details.get('built_by', '—')}")
-                    st.markdown(f"**📅 Year Built:**\n\n{monument_details.get('year_built', '—')}")
+                    st.markdown(f"**🧱 Built By:**\n\n{monument_details.get('built_by','—')}")
+                    st.markdown(f"**📅 Year Built:**\n\n{monument_details.get('year_built','—')}")
                 with col_b:
-                    st.markdown(f"**📍 Location:**\n\n{monument_details.get('location', '—')}")
-                    st.markdown(f"**🏗️ Type:**\n\n{monument_details.get('type', '—')}")
+                    st.markdown(f"**📍 Location:**\n\n{monument_details.get('location','—')}")
+                    st.markdown(f"**🏗️ Type:**\n\n{monument_details.get('type','—')}")
                 st.markdown("---")
                 st.markdown("**🌏 Cultural Importance:**")
-                st.info(monument_details.get("cultural_importance", "—"))
-                badge_col1, badge_col2 = st.columns(2)
-                with badge_col1:
-                    if monument_details.get("unesco"):
-                        st.success("🏆 UNESCO World Heritage Site")
-                with badge_col2:
-                    if monument_details.get("seven_wonders"):
-                        st.success("✨ One of the Seven Wonders of the World")
+                st.info(monument_details.get("cultural_importance","—"))
+                b1, b2 = st.columns(2)
+                with b1:
+                    if monument_details.get("unesco"): st.success("🏆 UNESCO World Heritage Site")
+                with b2:
+                    if monument_details.get("seven_wonders"): st.success("✨ Seven Wonders of the World")
 
             with tab2:
                 st.markdown("**🏛️ Architectural Style & Construction:**")
-                st.info(monument_details.get("architecture", "—"))
+                st.info(monument_details.get("architecture","—"))
 
             with tab3:
-                key_facts = monument_details.get("key_facts", [])
-                for i, fact in enumerate(key_facts, 1):
-                    st.markdown(
-                        f"""<div style="background:var(--bg-card);border:1px solid var(--border);
-                        border-radius:8px;padding:0.8rem 1rem;margin:0.4rem 0;">
-                        <span style="color:var(--gold);font-weight:700;">#{i}</span>
-                        &nbsp;{fact}</div>""",
-                        unsafe_allow_html=True,
-                    )
+                for i, fact in enumerate(monument_details.get("key_facts",[]), 1):
+                    st.markdown(f"""<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1rem;margin:0.4rem 0;">
+                    <span style="color:var(--gold);font-weight:700;">#{i}</span>&nbsp;{fact}</div>""", unsafe_allow_html=True)
 
             with tab4:
-                fun_fact = monument_details.get("fun_fact", "")
+                fun_fact = monument_details.get("fun_fact","")
                 if fun_fact:
-                    st.markdown(
-                        f"""<div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.4);
-                        border-radius:12px;padding:1.5rem;font-size:1.05rem;color:var(--gold-light);">
-                        💡 {fun_fact}</div>""",
-                        unsafe_allow_html=True,
-                    )
-                # Quick quiz teaser
+                    st.markdown(f"""<div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.4);border-radius:12px;padding:1.5rem;font-size:1.05rem;color:var(--gold-light);">💡 {fun_fact}</div>""", unsafe_allow_html=True)
                 st.markdown("")
                 st.markdown("**🧠 Want to test your knowledge?**")
                 if st.button(T("go_to_quiz"), key="goto_quiz_btn"):
-                    st.session_state["page_id"] = "quiz"
-                    st.rerun()
+                    st.session_state["page_id"] = "quiz"; st.rerun()
 
             with tab5:
                 col_v1, col_v2 = st.columns(2)
-                with col_v1:
-                    st.markdown(f"**🗓️ Best Time to Visit:**\n\n{monument_details.get('best_time_to_visit', '—')}")
-                with col_v2:
-                    st.markdown(f"**🎟️ Entry Fee:**\n\n{monument_details.get('entry_fee', '—')}")
+                with col_v1: st.markdown(f"**🗓️ Best Time to Visit:**\n\n{monument_details.get('best_time_to_visit','—')}")
+                with col_v2: st.markdown(f"**🎟️ Entry Fee:**\n\n{monument_details.get('entry_fee','—')}")
                 st.markdown("")
                 st.info("🌿 Follow sustainable tourism guidelines → Visit the **Sustainability** tab for tips!")
+                # Festival teaser (NEW)
+                upcoming = get_festivals_for_monument(monument_name)
+                if upcoming:
+                    next_fest = upcoming[0]
+                    st.markdown(f"""<div style="background:rgba(212,137,63,0.08);border:1px solid rgba(212,137,63,0.3);border-radius:10px;padding:0.8rem 1rem;margin-top:0.5rem;">
+                    <span style="color:#E8A85C;font-weight:700;">{next_fest['icon']} Upcoming Festival:</span>
+                    <span style="color:#C4A882;"> {next_fest['name']} — in {next_fest['days_until']} days</span></div>""", unsafe_allow_html=True)
 
-            # ── Social Caption ────────────────────────────────────────────────
+            # ── TIME TRAVEL TAB (NEW) ────────────────────────────────────────
+            with tab6:
+                st.markdown("""<div style="background:linear-gradient(135deg,rgba(27,16,64,0.8),rgba(122,46,59,0.08));border:1px solid rgba(201,168,76,0.25);border-radius:16px;padding:1.2rem 1.5rem;margin-bottom:1.2rem;">
+  <div style="font-family:'Cinzel',serif;font-size:1.1rem;color:#E8C97A;font-weight:500;margin-bottom:0.3rem;">⏳ Time Travel Mode</div>
+  <div style="color:#C4A882;font-size:0.82rem;">Click a button below to travel through history and see how this monument looked across different eras</div>
+</div>""", unsafe_allow_html=True)
+
+                # Era button selector
+                era_cols = st.columns(4)
+                era_emojis = ["🏗️", "✨", "🇬🇧", "📸"]
+                if "tt_era_idx" not in st.session_state:
+                    st.session_state["tt_era_idx"] = 3  # default modern
+
+                for i, (ec, period) in enumerate(zip(era_cols, TIME_PERIODS)):
+                    with ec:
+                        is_active = (st.session_state["tt_era_idx"] == i)
+                        btn_style = "primary" if is_active else "secondary"
+                        if st.button(f"{era_emojis[i]} {period['key'].replace('_',' ').title()}", key=f"era_btn_{i}_{monument_name.replace(' ','_')}", use_container_width=True, type=btn_style):
+                            st.session_state["tt_era_idx"] = i
+                            st.rerun()
+
+                selected_idx = st.session_state["tt_era_idx"]
+                selected_period = TIME_PERIODS[selected_idx]
+
+                st.markdown("")
+
+                # Check for local image first
+                slug = _monument_slug(monument_name)
+                local_img = None
+                for ext in [".jpg", ".webp", ".png"]:
+                    p = BASE_DIR / "assets" / "time_travel" / slug / f"{selected_period['key']}{ext}"
+                    if p.exists():
+                        local_img = str(p)
+                        break
+
+                img_col, info_col = st.columns([3, 2])
+                with img_col:
+                    if local_img:
+                        st.image(local_img, use_container_width=True, caption=f"{monument_name} — {selected_period['label']}")
+                    else:
+                        # Styled placeholder — always works, no internet needed
+                        era_colors = {
+                            "construction": ("rgba(139,90,43,0.3)", "rgba(139,90,43,0.6)", "⚒️", "#C8A06E"),
+                            "peak_glory":   ("rgba(201,168,76,0.2)", "rgba(201,168,76,0.5)", "👑", "#E8C97A"),
+                            "colonial":     ("rgba(80,80,80,0.3)",   "rgba(80,80,80,0.6)",   "🎩", "#A0A0A0"),
+                            "modern":       ("rgba(75,155,142,0.2)", "rgba(75,155,142,0.5)", "📸", "#7ECDC0"),
+                        }
+                        bg, border, ico, txt = era_colors.get(selected_period["key"], era_colors["modern"])
+                        st.markdown(f"""<div style="background:{bg};border:2px solid {border};border-radius:16px;padding:4rem 2rem;text-align:center;min-height:280px;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+  <div style="font-size:5rem;margin-bottom:1rem;">{ico}</div>
+  <div style="font-family:'Cinzel',serif;font-size:1.3rem;color:{txt};font-weight:600;margin-bottom:0.5rem;">{monument_name}</div>
+  <div style="color:{txt};font-size:1rem;margin-bottom:1.5rem;opacity:0.8;">{selected_period['label']}</div>
+  <div style="color:rgba(255,255,255,0.35);font-size:0.75rem;font-style:italic;">Add your AI image to assets/time_travel/{slug}/{selected_period['key']}.jpg<br>to display it here</div>
+</div>""", unsafe_allow_html=True)
+
+                with info_col:
+                    era_colors2 = {"construction":"#C8A06E","peak_glory":"#E8C97A","colonial":"#A0A0A0","modern":"#7ECDC0"}
+                    accent = era_colors2.get(selected_period["key"], "#E8C97A")
+                    st.markdown(f"""<div style="background:rgba(28,22,56,0.9);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:1.5rem;height:100%;">
+  <div style="font-family:'Cinzel',serif;font-size:1rem;color:{accent};margin-bottom:0.8rem;">{selected_period['label']}</div>
+  <div style="color:#C4A882;font-size:0.88rem;line-height:1.8;margin-bottom:1.2rem;">{selected_period['description']}</div>
+  <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.15);border-radius:8px;padding:0.6rem 0.8rem;">
+    <div style="color:#7A6E5C;font-size:0.68rem;font-family:'DM Mono',monospace;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.2rem;">TIME PERIOD</div>
+    <div style="color:{accent};font-size:0.9rem;font-weight:600;">{selected_period['period']}</div>
+  </div>
+</div>""", unsafe_allow_html=True)
+
+                with st.expander("🎨 Get AI Image Prompts for this feature", expanded=False):
+                    st.markdown("Generate images using Leonardo.ai or Bing Image Creator, then save them to the path shown below.")
+                    st.markdown("")
+                    for period in TIME_PERIODS:
+                        prompt = f"Historically accurate digital illustration of {monument_name} {period['prompt']}"
+                        st.markdown(f"**{period['label']}** — save to: `assets/time_travel/{slug}/{period['key']}.jpg`")
+                        st.code(prompt, language=None)
+
+            # Social caption
             st.markdown("---")
             st.markdown(f"### {T('share_exploration')}")
-            caption = generate_caption(monument_name)
-            st.text_area(
-                T("copy_share"),
-                value=caption,
-                height=120,
-                key="social_caption_area",
-            )
-
+            st.text_area(T("copy_share"), value=generate_caption(monument_name), height=120, key="social_caption_area")
         else:
             st.info(f"📚 Full details for **{monument_name}** are being added. Try selecting from the dropdown!")
-
     else:
         st.info(T("upload_or_select"))
 
-# -----------------------------------------------------------------------------
-# AI Chatbot page
-# -----------------------------------------------------------------------------
+
+# =============================================================================
+# CHATBOT PAGE
+# =============================================================================
 elif active_page == "chatbot":
     st.markdown(f"## {T('ai_chatbot')}")
 
     monument_result = st.session_state.get("monument_result")
-    if monument_result is None or monument_result.get("monument_name", "Unknown") == "Unknown":
-        monument_name = "Taj Mahal"
-        st.info(f"{T('chatting_about')}: **Taj Mahal**")
+    if monument_result is None or monument_result.get("monument_name","Unknown") == "Unknown":
+        monument_name = "Taj Mahal"; st.info(f"{T('chatting_about')}: **Taj Mahal**")
     else:
-        monument_name = monument_result.get("monument_name", "Taj Mahal")
-        st.success(f"{T('chatting_about')}: {monument_name}")
+        monument_name = monument_result.get("monument_name","Taj Mahal"); st.success(f"{T('chatting_about')}: {monument_name}")
 
-    # Display chat history
+    # Show mode-aware hint
+    ucfg = get_user_config()
+    st.markdown(f'<div style="background:{ucfg["bg"]};border:1px solid {ucfg["border"]};border-radius:8px;padding:0.5rem 1rem;font-size:0.82rem;color:{ucfg["color"]};margin-bottom:1rem;">{ucfg["icon"]} {ucfg["label"]} Mode — Try asking about: {", ".join(ucfg["content_focus"][:2])}</div>', unsafe_allow_html=True)
+
     for message in st.session_state["chat_history"]:
-        role = message.get("role", "")
-        content = message.get("content", "")
-        if role == "user":
-            with st.chat_message("user"):
-                st.write(content)
-        elif role == "assistant":
-            with st.chat_message("assistant"):
-                st.write(content)
+        with st.chat_message(message.get("role","")):
+            st.write(message.get("content",""))
 
-    # Chat input
     user_input = st.chat_input(f"{T('ask_anything')} {monument_name}...")
-
     if user_input:
-        st.session_state["chat_history"].append({"role": "user", "content": user_input})
-
+        st.session_state["chat_history"].append({"role":"user","content":user_input})
         with st.spinner(T("thinking")):
             try:
                 response = get_demo_response(user_input, monument_name)
-            except Exception as e:
+            except Exception:
                 response = f"I'd be happy to tell you about {monument_name}. Please ask me anything about its history, architecture, or culture!"
-
-        st.session_state["chat_history"].append({"role": "assistant", "content": response})
-
-        # XP: asking chatbot a question
+        st.session_state["chat_history"].append({"role":"assistant","content":response})
         pts = award_xp("ask_chatbot")
         st.toast(f"⚡ +{pts} XP for your curiosity!", icon="💬")
-
         st.rerun()
 
-    if st.button(T("clear_chat")):
-        st.session_state["chat_history"] = []
-        st.rerun()
+    if st.button(T("clear_chat")): st.session_state["chat_history"] = []; st.rerun()
 
-# -----------------------------------------------------------------------------
-# Sustainability page
-# -----------------------------------------------------------------------------
+
+# =============================================================================
+# SUSTAINABILITY PAGE
+# =============================================================================
 elif active_page == "sustainability":
     st.markdown(f"## {T('sustainable_tourism')}")
-
     monument_result = st.session_state.get("monument_result")
-    if monument_result is None or monument_result.get("monument_name", "Unknown") == "Unknown":
-        monument_name = "Taj Mahal"
-    else:
-        monument_name = monument_result.get("monument_name", "Taj Mahal")
-
+    monument_name = "Taj Mahal" if not monument_result or monument_result.get("monument_name","Unknown") == "Unknown" else monument_result.get("monument_name","Taj Mahal")
     st.success(f"{T('sustainability_tips_for')}: {monument_name}")
-
-    monument_details = st.session_state.get("monument_details")
     if "sustainability_tips" not in st.session_state or st.session_state.get("last_monument") != monument_name:
         with st.spinner("🌱 Loading sustainability tips..."):
             tips = get_demo_sustainability_tips(monument_name)
-            st.session_state["sustainability_tips"] = tips
-            st.session_state["last_monument"] = monument_name
+            st.session_state["sustainability_tips"] = tips; st.session_state["last_monument"] = monument_name
             st.toast("Sustainability tips ready!", icon="🌿")
-
     tips = st.session_state.get("sustainability_tips", get_demo_sustainability_tips(monument_name))
-
     s1, s2, s3 = st.columns(3)
     with s1:
         st.markdown('<div class="heritage-card">', unsafe_allow_html=True)
         st.markdown(f"### {T('environmental_tips')}")
-        for tip in tips.get("environmental_tips", []):
-            st.markdown(f"• {tip}")
+        for tip in tips.get("environmental_tips",[]): st.markdown(f"• {tip}")
         st.markdown("</div>", unsafe_allow_html=True)
-
     with s2:
         st.markdown('<div class="heritage-card">', unsafe_allow_html=True)
         st.markdown(f"### {T('cultural_respect')}")
-        for tip in tips.get("cultural_tips", []):
-            st.markdown(f"• {tip}")
+        for tip in tips.get("cultural_tips",[]): st.markdown(f"• {tip}")
         st.markdown("</div>", unsafe_allow_html=True)
-
     with s3:
         st.markdown('<div class="heritage-card">', unsafe_allow_html=True)
         st.markdown(f"### {T('responsible_photo')}")
-        for tip in tips.get("photography_tips", []):
-            st.markdown(f"• {tip}")
+        for tip in tips.get("photography_tips",[]): st.markdown(f"• {tip}")
         st.markdown("</div>", unsafe_allow_html=True)
-
     st.markdown("---")
-    conservation_message = tips.get("conservation_message", "")
-    if conservation_message:
-        st.info(f"💚 {conservation_message}")
+    if tips.get("conservation_message"): st.info(f"💚 {tips['conservation_message']}")
 
-# -----------------------------------------------------------------------------
-# Quiz page
-# -----------------------------------------------------------------------------
+
+# =============================================================================
+# QUIZ PAGE
+# =============================================================================
 elif active_page == "quiz":
     st.markdown(f"## {T('heritage_quiz')}")
-
     monument_result = st.session_state.get("monument_result")
-    if monument_result is None or monument_result.get("monument_name", "Unknown") == "Unknown":
-        monument_name = "Taj Mahal"
-    else:
-        monument_name = monument_result.get("monument_name", "Taj Mahal")
+    monument_name = "Taj Mahal" if not monument_result or monument_result.get("monument_name","Unknown") == "Unknown" else monument_result.get("monument_name","Taj Mahal")
 
     if st.session_state.get("quiz_questions") is None or st.session_state.get("last_quiz_monument") != monument_name:
         quiz_questions = get_quiz_questions(monument_name)
         if quiz_questions:
-            st.session_state["quiz_questions"] = quiz_questions
-            st.session_state["last_quiz_monument"] = monument_name
-            st.session_state["quiz_started"] = False
-            st.session_state["quiz_completed"] = False
-            st.session_state["current_question_index"] = 0
-            st.session_state["quiz_answers"] = []
+            st.session_state["quiz_questions"] = quiz_questions; st.session_state["last_quiz_monument"] = monument_name
+            st.session_state["quiz_started"] = False; st.session_state["quiz_completed"] = False
+            st.session_state["current_question_index"] = 0; st.session_state["quiz_answers"] = []
         else:
-            st.info(f"📚 Quiz questions for {monument_name} are being added. Try with a Taj Mahal image!")
-            st.stop()
+            st.info(f"📚 Quiz for {monument_name} coming soon! Try with a Taj Mahal image!"); st.stop()
 
-    quiz_questions = st.session_state.get("quiz_questions", [])
-    current_index = st.session_state.get("current_question_index", 0)
-    quiz_started = st.session_state.get("quiz_started", False)
-    quiz_completed = st.session_state.get("quiz_completed", False)
-    quiz_answers = st.session_state.get("quiz_answers", [])
-
+    quiz_questions = st.session_state.get("quiz_questions",[])
+    current_index = st.session_state.get("current_question_index",0)
+    quiz_started = st.session_state.get("quiz_started",False)
+    quiz_completed = st.session_state.get("quiz_completed",False)
+    quiz_answers = st.session_state.get("quiz_answers",[])
     st.success(f"{T('quiz_about')}: {monument_name}")
 
     if not quiz_started and not quiz_completed:
         st.markdown(f"**Test your knowledge about {monument_name}!**")
         st.markdown(f"This quiz has {len(quiz_questions)} questions.")
         if st.button(T("start_quiz"), type="primary"):
-            st.session_state["quiz_started"] = True
-            st.session_state["current_question_index"] = 0
-            st.session_state["quiz_answers"] = []
-            st.rerun()
-
+            st.session_state["quiz_started"] = True; st.session_state["current_question_index"] = 0; st.session_state["quiz_answers"] = []; st.rerun()
     elif quiz_started and not quiz_completed:
         if current_index < len(quiz_questions):
-            question_data = quiz_questions[current_index]
-            question = question_data.get("question", "")
-            options = question_data.get("options", [])
-            answer = question_data.get("answer", "")
-
-            st.markdown("---")
-            st.markdown(f"### Question {current_index + 1} of {len(quiz_questions)}")
-            st.markdown(f"**{question}**")
-
-            selected_option = st.radio(
-                "Select your answer:",
-                options=options,
-                key=f"quiz_option_{current_index}",
-                label_visibility="collapsed",
-            )
-
-            col1, col2 = st.columns([1, 4])
-            with col1:
+            qd = quiz_questions[current_index]
+            st.markdown("---"); st.markdown(f"### Question {current_index+1} of {len(quiz_questions)}")
+            st.markdown(f"**{qd.get('question','')}**")
+            selected = st.radio("Select your answer:", options=qd.get("options",[]), key=f"quiz_option_{current_index}", label_visibility="collapsed")
+            c1, c2 = st.columns([1,4])
+            with c1:
                 if st.button(T("submit_answer"), type="primary"):
-                    is_correct = selected_option == answer
-                    quiz_answers.append({
-                        "question": question,
-                        "selected": selected_option,
-                        "correct": answer,
-                        "is_correct": is_correct,
-                        "explanation": question_data.get("explanation", ""),
-                    })
+                    is_correct = selected == qd.get("answer","")
+                    quiz_answers.append({"question":qd.get("question",""),"selected":selected,"correct":qd.get("answer",""),"is_correct":is_correct,"explanation":qd.get("explanation","")})
                     st.session_state["quiz_answers"] = quiz_answers
-                    if current_index + 1 < len(quiz_questions):
-                        st.session_state["current_question_index"] = current_index + 1
+                    if current_index+1 < len(quiz_questions): st.session_state["current_question_index"] = current_index+1
                     else:
-                        st.session_state["quiz_completed"] = True
-                        st.session_state["quizzes_completed"] += 1
-                        correct_count = sum(1 for ans in quiz_answers if ans.get("is_correct", False))
-                        # XP: completing a quiz
-                        pts = award_xp("complete_quiz")
-                        st.toast(f"🧠 Quiz complete! Score: {correct_count}/{len(quiz_questions)} | +{pts} XP", icon="🧠")
+                        st.session_state["quiz_completed"] = True; st.session_state["quizzes_completed"] += 1
+                        correct_count = sum(1 for a in quiz_answers if a.get("is_correct",False))
+                        pts = award_xp("complete_quiz"); st.toast(f"🧠 Quiz complete! Score: {correct_count}/{len(quiz_questions)} | +{pts} XP", icon="🧠")
                     st.rerun()
-            with col2:
+            with c2:
                 if current_index > 0:
-                    if st.button("⬅️ Previous"):
-                        st.session_state["current_question_index"] = current_index - 1
-                        st.rerun()
-
+                    if st.button("⬅️ Previous"): st.session_state["current_question_index"] = current_index-1; st.rerun()
     elif quiz_completed:
-        st.markdown("---")
-        st.markdown(f"### {T('quiz_completed')}")
-
-        correct_count = sum(1 for ans in quiz_answers if ans.get("is_correct", False))
-        total_questions = len(quiz_answers)
-        score_percentage = (correct_count / total_questions * 100) if total_questions > 0 else 0
-
-        st.markdown(f"**Your Score: {correct_count}/{total_questions} ({score_percentage:.0f}%)**")
-
-        if score_percentage == 100:
-            st.success("🌟 Perfect score! You're a heritage expert!")
-            st.snow()
-        elif score_percentage >= 80:
-            st.success("🎯 Excellent! Great knowledge of Indian heritage!")
-        elif score_percentage >= 60:
-            st.info("👍 Good job! Keep learning about India's monuments!")
-        else:
-            st.warning("📚 Keep studying! Visit the monument details to learn more!")
-
-        st.markdown("---")
-        st.markdown(f"### {T('review_answers')}")
+        st.markdown("---"); st.markdown(f"### {T('quiz_completed')}")
+        correct_count = sum(1 for a in quiz_answers if a.get("is_correct",False))
+        total = len(quiz_answers); pct = (correct_count/total*100) if total > 0 else 0
+        st.markdown(f"**Your Score: {correct_count}/{total} ({pct:.0f}%)**")
+        if pct == 100: st.success("🌟 Perfect score! You're a heritage expert!"); st.snow()
+        elif pct >= 80: st.success("🎯 Excellent! Great knowledge of Indian heritage!")
+        elif pct >= 60: st.info("👍 Good job! Keep learning about India's monuments!")
+        else: st.warning("📚 Keep studying! Visit the monument details to learn more!")
+        st.markdown("---"); st.markdown(f"### {T('review_answers')}")
         for idx, ans in enumerate(quiz_answers):
-            with st.expander(f"Question {idx + 1}: {ans.get('question', '')}"):
-                if ans.get("is_correct", False):
-                    st.success(f"✅ Correct! You selected: {ans.get('selected', '')}")
-                else:
-                    st.error(f"❌ Incorrect. You selected: {ans.get('selected', '')}")
-                    st.info(f"✅ Correct answer: {ans.get('correct', '')}")
-                st.markdown(f"**Explanation:** {ans.get('explanation', '')}")
-
+            with st.expander(f"Question {idx+1}: {ans.get('question','')}"):
+                if ans.get("is_correct",False): st.success(f"✅ Correct! You selected: {ans.get('selected','')}")
+                else: st.error(f"❌ Incorrect. You selected: {ans.get('selected','')}"); st.info(f"✅ Correct answer: {ans.get('correct','')}")
+                st.markdown(f"**Explanation:** {ans.get('explanation','')}")
         if st.button(T("retake_quiz")):
-            st.session_state["quiz_started"] = False
-            st.session_state["quiz_completed"] = False
-            st.session_state["current_question_index"] = 0
-            st.session_state["quiz_answers"] = []
-            st.rerun()
-
-        # ── Social caption after quiz ────────────────────────────────────────
-        st.markdown("---")
-        st.markdown(f"### {T('share_achievement')}")
-        quiz_caption = (
-            f"🧠 Just scored {correct_count}/{total_questions} on the {monument_name} quiz on Sanskriti AI!\n"
-            f"Testing my heritage knowledge and loving it.\n"
-            f"#SanskritiAI #QuizMaster #IncredibleIndia #{monument_name.replace(' ', '')}"
-        )
+            st.session_state["quiz_started"] = False; st.session_state["quiz_completed"] = False
+            st.session_state["current_question_index"] = 0; st.session_state["quiz_answers"] = []; st.rerun()
+        st.markdown("---"); st.markdown(f"### {T('share_achievement')}")
+        quiz_caption = (f"🧠 Just scored {correct_count}/{total} on the {monument_name} quiz on Sanskriti AI!\nTesting my heritage knowledge.\n#SanskritiAI #QuizMaster #IncredibleIndia #{monument_name.replace(' ','')}")
         st.text_area(T("copy_share"), value=quiz_caption, height=110, key="quiz_caption_area")
 
-# -----------------------------------------------------------------------------
-# Achievements page
-# -----------------------------------------------------------------------------
-elif active_page == "achievements":
-    render_dashboard("demo_user")
 
-# -----------------------------------------------------------------------------
-# Footer
-# -----------------------------------------------------------------------------
+# =============================================================================
+# ACHIEVEMENTS PAGE
+# =============================================================================
+elif active_page == "achievements":
+    st.markdown(f"## {T('achievements_title')}")
+    xp = st.session_state["xp"]; earned = st.session_state["achievements"]
+    visited = st.session_state["monuments_visited"]; quizzes = st.session_state["quizzes_completed"]
+    level = get_level(xp); next_xp = get_next_level_xp(xp)
+    progress_pct = int(min(xp/next_xp,1.0)*100) if next_xp else 100
+    st.markdown(f"""<div style="background:linear-gradient(135deg,#1F1F35,#242438);border:1px solid rgba(201,168,76,0.4);border-radius:16px;padding:2rem;margin-bottom:1.5rem;">
+  <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:#7A6E5C;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:0.4rem;">{T("current_level")}</div>
+  <div style="font-size:2.2rem;color:#C9A84C;font-weight:600;">{level}</div>
+  <div style="margin:1rem 0 0.4rem 0;background:rgba(255,255,255,0.06);border-radius:999px;height:10px;overflow:hidden;">
+    <div style="width:{progress_pct}%;height:100%;background:linear-gradient(90deg,#C9A84C,#E8C97A);border-radius:999px;"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#7A6E5C;">
+    <span>⚡ {xp} {T("xp_earned")}</span><span>{"Max level!" if not next_xp else f"{next_xp-xp} {T('xp_to_next')}"}</span>
+  </div>
+</div>""", unsafe_allow_html=True)
+
+    s1,s2,s3,s4 = st.columns(4)
+    with s1: st.metric("⚡ Total XP", xp)
+    with s2: st.metric("🏛️ Monuments Visited", len(visited))
+    with s3: st.metric("🧠 Quizzes Completed", quizzes)
+    with s4: st.metric("🏅 Badges Earned", len(earned))
+    st.markdown("---"); st.markdown(f"### {T('badge_collection')}")
+
+    UNLOCK_HINTS = {"first_visit":("Visit any monument","🔍 Go to Monument Recognition"),"quiz_master":("Complete 2 quizzes","🧠 Go to Quiz and complete 2"),"heritage_champion":("Earn 150+ XP","⚡ Explore, chat & take quizzes")}
+    b1,b2,b3 = st.columns(3)
+    for col, (key,(icon,name,desc)) in zip([b1,b2,b3], BADGES.items()):
+        hint, how = UNLOCK_HINTS[key]; is_earned = key in earned
+        with col:
+            if is_earned:
+                st.markdown(f"""<div style="background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.05));border:2px solid rgba(201,168,76,0.6);border-radius:16px;padding:1.8rem 1.2rem;text-align:center;">
+  <div style="font-size:3rem;margin-bottom:0.8rem;">{icon}</div><div style="color:#E8C97A;font-size:1.2rem;font-weight:600;margin-bottom:0.4rem;">{name}</div>
+  <div style="font-size:0.82rem;color:#B8A98A;margin-bottom:1rem;">{desc}</div>
+  <div style="background:rgba(75,142,110,0.2);border:1px solid rgba(75,142,110,0.5);border-radius:999px;padding:0.3rem 0.8rem;font-size:0.72rem;color:#7ECDA0;display:inline-block;">{T("unlocked")}</div>
+</div>""", unsafe_allow_html=True)
+            else:
+                st.markdown(f"""<div style="background:rgba(255,255,255,0.02);border:2px dashed rgba(255,255,255,0.1);border-radius:16px;padding:1.8rem 1.2rem;text-align:center;opacity:0.6;">
+  <div style="font-size:3rem;margin-bottom:0.8rem;filter:grayscale(1);">🔒</div><div style="color:#7A6E5C;font-size:1.2rem;font-weight:600;margin-bottom:0.4rem;">{name}</div>
+  <div style="font-size:0.82rem;color:#5C5445;margin-bottom:0.6rem;">{hint}</div><div style="font-size:0.75rem;color:#4A4035;font-style:italic;">{how}</div>
+</div>""", unsafe_allow_html=True)
+
+    st.markdown("---"); st.markdown(f"### {T('monuments_explored')}")
+    if visited:
+        all_monuments = get_all_monument_names(); cols = st.columns(3)
+        for i, m in enumerate(all_monuments):
+            with cols[i%3]:
+                if m in visited: st.markdown(f'<div style="background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.4);border-radius:8px;padding:0.6rem 1rem;margin:4px 0;color:#E8C97A;font-size:0.9rem;">✅ {m}</div>', unsafe_allow_html=True)
+                else: st.markdown(f'<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:0.6rem 1rem;margin:4px 0;color:#5C5445;font-size:0.9rem;">⬜ {m}</div>', unsafe_allow_html=True)
+    else: st.info(T("no_monuments_yet"))
+
+    xp_log = st.session_state.get("xp_log",[])
+    if xp_log:
+        st.markdown("---"); st.markdown(f"### {T('xp_activity_log')}")
+        for entry in reversed(xp_log[-10:]):
+            st.markdown(f'<div style="font-family:\'DM Mono\',monospace;font-size:0.78rem;color:#C9A84C;padding:2px 0;">▸ {entry}</div>', unsafe_allow_html=True)
+
+
+# =============================================================================
+# FESTIVAL CALENDAR PAGE (NEW — Feature 3)
+# =============================================================================
+elif active_page == "festival":
+    st.markdown("## 🗓️ Heritage Festival Calendar")
+
+    current_monument = None
+    result = st.session_state.get("monument_result")
+    if result and result.get("monument_name") not in ("Unknown", None, ""):
+        current_monument = result["monument_name"]
+
+    st.markdown("""<div style="background:linear-gradient(135deg,rgba(27,16,64,0.8),rgba(196,91,58,0.06));border:1px solid rgba(201,168,76,0.25);border-radius:16px;padding:1.5rem 2rem;margin-bottom:1.5rem;">
+  <div style="font-family:'Cinzel',serif;font-size:1.1rem;color:#E8C97A;font-weight:500;margin-bottom:0.3rem;">Cultural events at India's most iconic monuments</div>
+  <div style="color:#C4A882;font-size:0.88rem;">Plan your visit around history coming alive — 30+ festivals with historical context and visitor tips</div>
+</div>""", unsafe_allow_html=True)
+
+    # Filters
+    all_types = sorted(set(f["type"] for f in FESTIVALS))
+    all_states = sorted(set(f["state"] for f in FESTIVALS if f["state"] != "Pan India"))
+    all_mons_in_db = sorted(set(m for f in FESTIVALS for m in f.get("monuments",[])))
+
+    col_f1, col_f2, col_f3 = st.columns(3)
+    with col_f1: sel_type = st.selectbox("Filter by type:", ["All"]+all_types, key="fest_type")
+    with col_f2: sel_state = st.selectbox("Filter by state:", ["All"]+all_states, key="fest_state")
+    with col_f3:
+        mon_idx = (all_mons_in_db.index(current_monument)+1) if (current_monument and current_monument in all_mons_in_db) else 0
+        sel_mon = st.selectbox("Filter by monument:", ["All"]+all_mons_in_db, index=mon_idx, key="fest_mon")
+
+    # Apply filters and sort
+    filtered = []
+    for f in FESTIVALS:
+        if sel_type != "All" and f["type"] != sel_type: continue
+        if sel_state != "All" and sel_state.lower() not in f["state"].lower() and f["state"] != "Pan India": continue
+        if sel_mon != "All" and sel_mon not in f.get("monuments",[]): continue
+        filtered.append({**f, "days_until": _days_until(f["month"], f["day"])})
+    filtered.sort(key=lambda x: x["days_until"])
+
+    if not filtered:
+        st.info("No festivals match your filters. Try removing some filters."); st.stop()
+
+    st.markdown(f"**Showing {len(filtered)} festivals** — sorted by next occurrence")
+    st.markdown("")
+
+    # Monument-specific festivals first
+    if current_monument:
+        mon_fests = [f for f in filtered if current_monument in f.get("monuments",[])]
+        if mon_fests:
+            st.markdown(f"### 🏛️ Festivals at {current_monument}")
+            for fest in mon_fests:
+                days = fest["days_until"]
+                days_label = "🔴 Today!" if days==0 else (f"🟠 In {days} days" if days<=7 else (f"🟡 In {days} days" if days<=30 else f"In {days} days"))
+                with st.expander(f"{fest['icon']} **{fest['name']}** — {fest['location']}  |  {days_label}", expanded=(days<=30)):
+                    c1, c2 = st.columns([3,1])
+                    with c1:
+                        st.markdown(f"**{fest['significance']}**")
+                        st.markdown(f"""<div style="background:rgba(27,16,64,0.5);border-left:2px solid rgba(201,168,76,0.4);padding:0.6rem 1rem;border-radius:0 8px 8px 0;margin:0.8rem 0;">
+  <div style="font-size:0.72rem;color:#7A6E5C;font-family:'DM Mono',monospace;letter-spacing:0.08em;margin-bottom:0.3rem;">HISTORICAL CONTEXT</div>
+  <div style="color:#A89878;font-size:0.82rem;line-height:1.6;">{fest['historical_context']}</div>
+</div>""", unsafe_allow_html=True)
+                        st.success(f"💡 **Visitor Tip:** {fest['visitor_tip']}")
+                    with c2:
+                        st.markdown(f"""<div style="background:rgba(28,22,56,0.9);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:1rem;text-align:center;">
+  <div style="font-size:2.5rem;margin-bottom:0.5rem;">{fest['icon']}</div>
+  <div style="font-size:1.8rem;color:#C9A84C;font-weight:600;">{days}</div>
+  <div style="color:#7A6E5C;font-size:0.72rem;text-transform:uppercase;">days away</div>
+  <div style="color:#8A7560;font-size:0.72rem;margin-top:0.5rem;">📅 {_month_name(fest['month'])} {fest['day']}</div>
+  <div style="color:#7A6E5C;font-size:0.7rem;margin-top:0.3rem;">⏱️ {fest['duration']}</div>
+</div>""", unsafe_allow_html=True)
+            st.markdown("---")
+
+    # All other festivals
+    others = [f for f in filtered if not current_monument or current_monument not in f.get("monuments",[])]
+    soon = [f for f in others if f["days_until"] <= 30]
+    season = [f for f in others if 30 < f["days_until"] <= 90]
+    later = [f for f in others if f["days_until"] > 90]
+
+    def _render_simple_card(fest):
+        days = fest["days_until"]
+        days_label = "🔴 Today!" if days==0 else (f"🟠 In {days} days" if days<=7 else (f"🟡 In {days} days" if days<=30 else f"In {days} days"))
+        mons_str = ("  |  🏛️ " + ", ".join(fest["monuments"])) if fest.get("monuments") else ""
+        with st.expander(f"{fest['icon']} **{fest['name']}** — {fest['location']}  |  {days_label}{mons_str}", expanded=(days<=7)):
+            c1, c2 = st.columns([3,1])
+            with c1:
+                st.markdown(f"**{fest['significance']}**")
+                st.markdown(f"""<div style="background:rgba(27,16,64,0.5);border-left:2px solid rgba(201,168,76,0.4);padding:0.6rem 1rem;border-radius:0 8px 8px 0;margin:0.8rem 0;">
+  <div style="font-size:0.72rem;color:#7A6E5C;font-family:'DM Mono',monospace;margin-bottom:0.3rem;">HISTORICAL CONTEXT</div>
+  <div style="color:#A89878;font-size:0.82rem;line-height:1.6;">{fest['historical_context']}</div>
+</div>""", unsafe_allow_html=True)
+                st.success(f"💡 **Visitor Tip:** {fest['visitor_tip']}")
+            with c2:
+                st.markdown(f"""<div style="background:rgba(28,22,56,0.9);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:1rem;text-align:center;">
+  <div style="font-size:2.5rem;margin-bottom:0.5rem;">{fest['icon']}</div>
+  <div style="font-size:1.8rem;color:#C9A84C;font-weight:600;">{days}</div>
+  <div style="color:#7A6E5C;font-size:0.72rem;text-transform:uppercase;">days away</div>
+  <div style="color:#8A7560;font-size:0.72rem;margin-top:0.5rem;">📅 {_month_name(fest['month'])} {fest['day']}</div>
+  <div style="color:#7A6E5C;font-size:0.7rem;margin-top:0.3rem;">⏱️ {fest['duration']}</div>
+</div>""", unsafe_allow_html=True)
+
+    if soon:
+        st.markdown("#### 🔥 Coming Soon (within 30 days)")
+        for f in soon: _render_simple_card(f)
+    if season:
+        st.markdown("#### 📅 This Season (next 3 months)")
+        for f in season: _render_simple_card(f)
+    if later:
+        with st.expander(f"📆 Later this year ({len(later)} more festivals)", expanded=False):
+            for f in later: _render_simple_card(f)
+
+
+# =============================================================================
+# FOOTER
+# =============================================================================
 st.markdown(f"""
-<div style="
-  margin-top: 4rem;
-  padding: 1.5rem 0;
-  border-top: 1px solid rgba(212,137,63,0.15);
-  text-align: center;
-">
-  <div style="color:rgba(201,168,76,0.25); font-size:1rem; letter-spacing:0.5em; margin-bottom:0.8rem;">
-    ❖ ─── ✦ ─── ❖
-  </div>
-  <div style="font-family:'Cinzel',serif; font-size:0.8rem; color:#8A7560; letter-spacing:0.1em; margin-bottom:0.3rem;">
-    {T("footer_left")}
-  </div>
-  <div style="font-family:'Philosopher',sans-serif; font-size:0.72rem; color:#6A5C48; letter-spacing:0.08em;">
-    {T("footer_right")}
-  </div>
+<div style="margin-top:4rem;padding:1.5rem 0;border-top:1px solid rgba(212,137,63,0.15);text-align:center;">
+  <div style="color:rgba(201,168,76,0.25);font-size:1rem;letter-spacing:0.5em;margin-bottom:0.8rem;">❖ ─── ✦ ─── ❖</div>
+  <div style="font-family:'Cinzel',serif;font-size:0.8rem;color:#8A7560;letter-spacing:0.1em;margin-bottom:0.3rem;">{T("footer_left")}</div>
+  <div style="font-family:'Philosopher',sans-serif;font-size:0.72rem;color:#6A5C48;letter-spacing:0.08em;">{T("footer_right")}</div>
 </div>
 """, unsafe_allow_html=True)
