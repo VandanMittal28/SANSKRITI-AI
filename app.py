@@ -10,10 +10,13 @@ from modules.chatbot import get_ai_response, get_demo_response
 from modules.quiz import get_quiz_questions
 from modules.recognition import get_all_monument_names, get_demo_result, get_monument_details, identify_monument
 from modules.sustainability import get_demo_sustainability_tips, get_sustainability_tips
+<<<<<<< HEAD
 from modules.gamification.dashboard import render_dashboard
 from modules.gamification.xp_system import award_xp as gamification_award_xp
 from modules.gamification.achievements import check_and_award_badges as gamification_check_and_award_badges
 from modules.gamification.hidden_gems import check_nearby_gems, show_gem_unlock_ui
+=======
+>>>>>>> 07dc145c19582e5525ab4c2d7040077e47ce921b
 
 # -----------------------------------------------------------------------------
 # Page config
@@ -213,10 +216,13 @@ def award_xp(reason: str) -> int:
     points = XP_RULES.get(reason, 0)
     st.session_state["xp"] += points
     st.session_state["xp_log"].append(f"+{points} XP — {reason.replace('_', ' ').title()}")
+<<<<<<< HEAD
     
     # Sync Gamification System
     gamification_award_xp("demo_user", points)
     
+=======
+>>>>>>> 07dc145c19582e5525ab4c2d7040077e47ce921b
     _check_achievements()
     return points
 
@@ -238,11 +244,14 @@ def _check_achievements():
         st.toast("🌟 Achievement Unlocked: Heritage Champion!", icon="🌟")
 
     st.session_state["achievements"] = ach
+<<<<<<< HEAD
     
     # Sync Gamification System Badges
     new_badges = gamification_check_and_award_badges("demo_user", xp, len(vis), quizz > 0)
     for badge in new_badges:
         st.toast(f"{badge['icon']} New Badge Unlocked: {badge['title']}", icon=badge['icon'])
+=======
+>>>>>>> 07dc145c19582e5525ab4c2d7040077e47ce921b
 
 
 def get_level(xp: int) -> str:
@@ -268,6 +277,56 @@ def generate_caption(monument_name: str) -> str:
         f"#SanskritiAI #HeritageExplorer #IncredibleIndia #{monument_name.replace(' ', '')}"
     )
 
+<<<<<<< HEAD
+=======
+
+def render_voice_guide(monument_name: str) -> None:
+    """Render a voice guide section for listening to monument narration.
+
+    The function displays a simple interface to select a language and play 
+    the corresponding audio file. Audio files follow the naming pattern:
+    {monument_name_lowercase_with_underscores}_{language_code}.mp3
+
+    Args:
+        monument_name: The name of the monument (e.g., "Taj Mahal").
+    """
+    # Reset per‑monument state when name changes
+    prev = st.session_state.get("last_voice_monument")
+    if prev != monument_name:
+        for key in list(st.session_state.keys()):
+            if key.startswith("voice_clicked_") or key.startswith("voice_lang_"):
+                st.session_state.pop(key, None)
+        st.session_state["last_voice_monument"] = monument_name
+
+    with st.container():
+        st.markdown("## 🎧 Voice Guide")
+        clicked = st.button("Listen to Emperor", key=f"listen_{monument_name}")
+        if clicked:
+            st.session_state[f"voice_clicked_{monument_name}"] = True
+
+        if st.session_state.get(f"voice_clicked_{monument_name}", False):
+            lang = st.radio("Language", ["English", "Hindi"], key=f"voice_lang_{monument_name}")
+
+            # Convert monument name to file format: lowercase, replace spaces with underscores
+            clean_name = monument_name.lower().strip().replace(" ", "_")
+            
+            # Determine language suffix
+            lang_suffix = "en" if lang == "English" else "hi"
+            
+            # Build absolute path to audio file
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            audio_file = os.path.join(base_dir, "assets", "audio", f"{clean_name}_{lang_suffix}.mp3")
+            
+            # Display the file path being searched for (debug)
+            st.write(f"Looking for: `{clean_name}_{lang_suffix}.mp3`")
+            
+            # Check if file exists and play it
+            if os.path.exists(audio_file):
+                st.audio(audio_file)
+            else:
+                st.error(f"Audio file not found: {clean_name}_{lang_suffix}.mp3")
+
+>>>>>>> 07dc145c19582e5525ab4c2d7040077e47ce921b
 # -----------------------------------------------------------------------------
 # Custom CSS — Indian Heritage Theme
 # -----------------------------------------------------------------------------
@@ -1148,6 +1207,7 @@ if active_page == "home":
 </div>
 """, unsafe_allow_html=True)
 
+<<<<<<< HEAD
     # ── Hidden Gems Demo ──────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown("### 💎 Explore Hidden Gems")
@@ -1162,6 +1222,8 @@ if active_page == "home":
         unlocked = check_nearby_gems(user_lat, user_lon, user_id)
         show_gem_unlock_ui(unlocked)
 
+=======
+>>>>>>> 07dc145c19582e5525ab4c2d7040077e47ce921b
 # -----------------------------------------------------------------------------
 # Monument Recognition page
 # -----------------------------------------------------------------------------
@@ -1288,6 +1350,8 @@ elif active_page == "recognition":
             st.markdown(f"**📊 Confidence:** {result.get('confidence', '—')}")
             st.markdown(f"**📝** {result.get('brief_description', '—')}")
 
+        # render voice guide immediately beneath the monument title/card
+        render_voice_guide(monument_name)
         # ── Detailed Information ──────────────────────────────────────────────
         monument_details = st.session_state.get("monument_details") or get_monument_details(monument_name)
         st.session_state["monument_details"] = monument_details
